@@ -1,0 +1,252 @@
+---
+// Estación Espacial Internacional en ASCII sobre el limbo de la Tierra. Abre el bloque de tecnología.
+---
+
+<section class="iss" id="tecnologia" aria-labelledby="iss-title">
+	<canvas class="iss__canvas" aria-hidden="true"></canvas>
+
+	<div class="iss__copy" data-reveal>
+		<h2 id="iss-title">Tecnología</h2>
+		<p>
+			Así vamos a construir Kha-device 01: dos dispositivos miden y tres modelos de lenguaje analizan. Dos especialistas, cada uno
+			en lo suyo, y un tercero que resume.
+		</p>
+		<p class="iss__credit">Estación Espacial Internacional · redibujada en ASCII</p>
+	</div>
+</section>
+
+<style>
+	.iss {
+		position: relative;
+		min-height: 88svh;
+		overflow: hidden;
+		background: var(--sky);
+	}
+
+	.iss__canvas {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	/* La Tierra se funde hacia la sección siguiente; velo a la izquierda para el texto. */
+	.iss::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(to bottom, transparent 90%, var(--sky)),
+			radial-gradient(ellipse 46% 40% at 16% 40%, var(--sky) 35%, transparent 80%);
+		pointer-events: none;
+	}
+
+	.iss__copy {
+		position: absolute;
+		z-index: 1;
+		left: var(--gutter);
+		top: 38%;
+		translate: 0 -50%;
+		max-width: min(26rem, 34vw);
+	}
+
+	h2 {
+		margin: 0;
+		font-family: var(--display);
+		font-weight: 400;
+		font-size: clamp(1.5rem, 2.6vw, 2.4rem);
+		line-height: 1.2;
+		letter-spacing: 0.03em;
+		text-transform: uppercase;
+	}
+
+	p {
+		margin: 1.5rem 0 0;
+		font-size: clamp(0.92rem, 1.1vw, 1.05rem);
+		line-height: 1.7;
+		color: var(--soft);
+	}
+
+	.iss__credit {
+		margin-top: 2rem;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--dim);
+	}
+
+	@media (max-width: 900px) {
+		.iss::after {
+			background: linear-gradient(to bottom, var(--sky) 4%, transparent 40%, transparent 90%, var(--sky));
+		}
+
+		.iss__copy {
+			top: 10svh;
+			translate: none;
+			max-width: calc(100% - 2.5rem);
+		}
+	}
+</style>
+
+<script>
+	import { clamp01, fbm, glyph, hash, mount, noise, smooth } from '../scripts/ascii';
+
+	type Kind = 'truss' | 'solar' | 'radiator' | 'module' | 'panel';
+	interface Part {
+		x: number;
+		y: number;
+		w: number;
+		h: number;
+		kind: Kind;
+	}
+
+	// Piezas en coordenadas locales (la viga mide 2 de punta a punta). Las últimas tapan a las primeras.
+	const part = (kind: Kind, x: number, y: number, w: number, h: number): Part => ({ kind, x, y, w, h });
+	const PARTS: Part[] = [
+		// Ocho alas solares: dos pares por lado, arriba y abajo de la viga.
+		...[-0.92, -0.68, 0.68, 0.92].flatMap((x) => [part('solar', x, -0.36, 0.085, 0.28), part('solar', x, 0.36, 0.085, 0.28)]),
+		part('radiator', -0.32, 0.2, 0.05, 0.16),
+		part('radiator', 0.32, 0.2, 0.05, 0.16),
+		part('truss', 0, 0, 1.0, 0.04),
+		// Paneles del segmento ruso.
+		part('panel', -0.2, 0.4, 0.11, 0.03),
+		part('panel', 0.2, 0.4, 0.11, 0.03),
+		// Módulos presurizados: eje principal y cruces.
+		part('module', 0, -0.24, 0.15, 0.034),
+		part('module', 0, 0.16, 0.2, 0.036),
+		part('module', 0, 0.08, 0.045, 0.44),
+	];
+
+	const STARS = ['#8fa6d8', '#d8cfa0', '#d59a86', '#9fd0c8'];
+
+	const section = document.querySelector<HTMLElement>('.iss');
+	const canvas = document.querySelector<HTMLCanvasElement>('.iss__canvas');
+
+	// 0 cuando la sección asoma por abajo, 1 cuando sale por arriba.
+	function progress() {
+		const rect = section!.getBoundingClientRect();
+		return clamp01((innerHeight - rect.top) / (innerHeight + rect.height));
+	}
+
+	// Devuelve [símbolo, color] de la pieza que cubre el punto local, o null.
+	function station(lx: number, ly: number, t: number): [string, string] | null {
+		for (let n = PARTS.length - 1; n >= 0; n--) {
+			const p = PARTS[n];
+			const u = (lx - p.x) / p.w, v = (ly - p.y) / p.h;
+			if (u < -1 || u > 1 || v < -1 || v > 1) continue;
+
+			if (p.kind === 'module') {
+				// Cilindro: más luz en el lomo, juntas oscuras a lo largo del eje.
+				const across = p.w < p.h ? u : v;
+				const along = p.w < p.h ? v * p.h : u * p.w;
+				const joint = Math.abs(Math.sin(along * 34)) < 0.16 ? 0.55 : 1;
+				const lit = Math.sqrt(1 - across * across) * joint;
+				const k = 0.3 + lit * 0.7;
+				return [glyph(0.3 + lit * 0.65), `rgb(${(226 * k) | 0},${(226 * k) | 0},${(220 * k) | 0})`];
+			}
+			if (p.kind === 'truss') return [Math.sin(lx * 90) > 0 ? '#' : '=', 'rgb(150,154,162)'];
+			if (p.kind === 'radiator') return [Math.abs(u) > 0.7 ? '|' : ':', 'rgb(196,200,208)'];
+			if (p.kind === 'panel') return [Math.sin(u * 14) > 0 ? '#' : '=', 'rgb(58,92,170)'];
+
+			// Ala solar: mástil dorado al centro, marco y celdas azules con un destello que la recorre.
+			if (Math.abs(u) < 0.14) return [':', 'rgb(196,158,84)'];
+			if (Math.abs(u) > 0.86) return ['|', 'rgb(150,124,72)'];
+			const glint = smooth(0.75, 1, Math.sin(v * 2.2 - t * 0.5 + p.x * 3));
+			const k = 0.7 + glint * 0.5;
+			return [Math.sin(v * p.h * 190) > 0 ? '#' : '=', `rgb(${(40 * k + glint * 60) | 0},${(72 * k + glint * 60) | 0},${(160 * k) | 0})`];
+		}
+		return null;
+	}
+
+	if (section && canvas) {
+		const scene = mount(canvas, {
+			fontSize: (w) => (w < 640 ? 7 : 8),
+			stillAt: 20,
+			draw({ ctx, W, H, cw, ch, cols, rows }, t) {
+				const wide = W > 900;
+				const p = progress();
+				// La estación cruza despacio la pantalla a medida que se hace scroll.
+				const S = Math.min(W * (wide ? 0.25 : 0.42), H * 0.3);
+				const cx = (wide ? W * 0.66 : W * 0.5) + (0.5 - p) * W * 0.16;
+				const cy = (wide ? H * 0.35 : H * 0.46) + Math.sin(t * 0.4) * H * 0.006;
+				const ang = -0.2 + Math.sin(t * 0.13) * 0.05;
+				const ca = Math.cos(ang), sa = Math.sin(ang);
+
+				// Limbo de la Tierra: un arco enorme que asoma por abajo.
+				const ER = Math.max(W, H) * 3.2;
+				const ex = W * 0.5, ey = H * 0.7 + ER;
+
+				for (let j = 0; j < rows; j++)
+					for (let i = 0; i < cols; i++) {
+						const x = (i + 0.5) * cw, y = (j + 0.5) * ch;
+						const dx = x - cx, dy = y - cy;
+						const lx = (dx * ca + dy * sa) / S, ly = (dy * ca - dx * sa) / S;
+
+						if (lx > -1.05 && lx < 1.05 && ly > -0.7 && ly < 0.7) {
+							const cell = station(lx, ly, t);
+							if (cell) {
+								if (cell[0] === ' ') continue;
+								ctx.fillStyle = cell[1];
+								ctx.fillText(cell[0], i * cw, j * ch);
+								continue;
+							}
+						}
+
+						const dist = Math.hypot(x - ex, y - ey);
+						if (dist < ER) {
+							const depth = (ER - dist) / H;
+							// Coordenadas sobre la superficie: a lo largo del arco y hacia adentro (comprimido por la curvatura).
+							const nx = (Math.atan2(y - ey, x - ex) * ER * 3.2) / H + t * 0.02;
+							const ny = Math.sqrt(depth) * 7;
+							const warp = fbm(nx * 0.5, ny * 0.5, 3);
+							const cn = fbm(nx + warp * 1.6, ny + warp, 2 + t * 0.01) + (noise(nx * 5, ny * 5, 1 + t * 0.02) - 0.5) * 0.16;
+							const cloud = smooth(0.54, 0.66, cn);
+							const belly = smooth(0.66, 0.8, cn);
+							const landRaw = fbm(nx * 0.7 + 20, ny * 0.7, 5) + (noise(nx * 4, ny * 4, 8) - 0.5) * 0.07;
+							const land = smooth(0.55, 0.57, landRaw);
+							const shallow = smooth(0.49, 0.55, landRaw);
+							const arid = smooth(0.4, 0.6, noise(nx * 1.6 + 2, ny * 1.6, 4));
+							const peaks = smooth(0.62, 0.7, landRaw);
+							const deep = noise(nx * 2.5 + 11, ny * 2.5, 6);
+							const rim = 1 - smooth(0, 0.006, depth);
+							// Océano: azul profundo, turquesa en la costa.
+							let r = 10 + deep * 16 + shallow * 30;
+							let g = 46 + deep * 44 + shallow * 92;
+							let b = 138 + deep * 56 + shallow * 14;
+							// Tierra: verde, ocre árido y cumbres claras.
+							r += (58 + arid * 126 + peaks * 40 - r) * land;
+							g += (124 + arid * 20 + peaks * 40 - g) * land;
+							b += (62 + arid * 22 + peaks * 60 - b) * land;
+							// Nubes con relieve; su sombra oscurece lo que hay debajo.
+							const shadow = smooth(0.48, 0.56, cn) * (1 - cloud) * 0.35;
+							r *= 1 - shadow;
+							g *= 1 - shadow;
+							b *= 1 - shadow;
+							r += (176 + belly * 70 - r) * cloud;
+							g += (186 + belly * 62 - g) * cloud;
+							b += (208 + belly * 44 - b) * cloud;
+							r += (244 - r) * rim;
+							g += (246 - g) * rim;
+							b += (248 - b) * rim;
+							const ink = 0.22 + deep * 0.16 + shallow * 0.1 + land * (0.2 + arid * 0.1 + peaks * 0.15) + cloud * (0.3 + belly * 0.3) + rim * 0.5;
+							ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+							ctx.fillText(glyph(ink + (hash(i, j, 3) - 0.5) * 0.04), i * cw, j * ch);
+						} else if (dist < ER + H * 0.018) {
+							// Atmósfera: un velo fino por encima del borde.
+							ctx.fillStyle = 'rgb(96,120,168)';
+							ctx.fillText(dist < ER + H * 0.008 ? ':' : '.', i * cw, j * ch);
+						} else if (hash(i, j, 73) > 0.9984) {
+							const kind = (hash(i, j, 17) * STARS.length) | 0;
+							ctx.fillStyle = STARS[kind];
+							ctx.globalAlpha = 0.45 + 0.35 * Math.sin(t * (0.6 + kind * 0.3) + i * 1.7);
+							ctx.fillText(".+*'"[(hash(i, j, 5) * 4) | 0], i * cw, j * ch);
+							ctx.globalAlpha = 1;
+						}
+					}
+			},
+		});
+		// Con movimiento reducido no hay bucle: el scroll sigue moviendo la estación.
+		addEventListener('scroll', () => scene.reduced.matches && scene.paint(), { passive: true });
+	}
+</script>

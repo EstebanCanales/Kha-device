@@ -1,0 +1,261 @@
+---
+// Los dos dispositivos. Cada uno reserva un hueco para su modelo 3D, que se integra después:
+// monta el visor dentro de `.device__model[data-model="…"]` y quita el <p class="slot__pending">.
+const dosimeter = [
+	'Tasa de dosis de radiación',
+	'Dosis absorbida acumulada',
+	'Historial de exposición individual',
+	'Tiempo de exposición registrado',
+];
+
+const M = 'Medición';
+const A = 'Análisis';
+const vitals = [
+	{
+		system: 'Sistema cardiovascular',
+		items: [
+			['Frecuencia cardíaca (HR)', M],
+			['Variabilidad cardíaca (HRV)', A],
+			['Actividad eléctrica cardíaca (ECG)', M],
+			['Cambios de patrones del ritmo cardíaco', A],
+		],
+	},
+	{
+		system: 'Sistema respiratorio',
+		items: [
+			['Frecuencia respiratoria', M],
+			['Patrones respiratorios', A],
+		],
+	},
+	{
+		system: 'Oxigenación sanguínea',
+		items: [['Saturación de oxígeno (SpO₂)', M]],
+	},
+	{
+		system: 'Temperatura',
+		items: [
+			['Temperatura cutánea', M],
+			['Variaciones y tendencias térmicas', A],
+			['Tendencias de temperatura durante la misión', A],
+		],
+	},
+	{
+		system: 'Actividad física y gravedad alterada',
+		items: [
+			['Actividad física', A],
+			['Períodos de inactividad', A],
+		],
+	},
+];
+
+// Componentes del dosímetro (dispositivo 1).
+const dosimeterHardware = [
+	['2 cámaras DIS · Mirion Technologies', 'Detección'],
+	['Cámara DIS de alta resolución', 'Satura a 500–700 mGy'],
+	['Cámara DIS de baja resolución', 'Satura a 5–7 Gy'],
+	['STM32L432KCU6', 'Microcontrolador'],
+	['MB85RS1MT · FRAM', 'Historial de exposición'],
+	['TMP117', 'Compensación térmica'],
+	['RV-3028-C7', 'Fecha y hora'],
+	['CR2032 y 3 × CR1216', 'Alimentación'],
+];
+
+// Los dos sensores del dispositivo 2 y lo que los acompaña en la placa.
+const hardware = [
+	['MAX86178', 'Pulso, SpO₂ y ECG'],
+	['MAX30205', 'Temperatura corporal'],
+	['LED y fotodiodos', 'Óptica del pulso'],
+	['Electrodos de ECG', 'Una derivación'],
+	['Batería LiPo y reguladores', 'Alimentación'],
+];
+---
+
+<section class="devices" id="dispositivos" aria-labelledby="devices-title">
+	<h2 id="devices-title" class="title" data-reveal>Dispositivos</h2>
+
+	<article class="device">
+		<div class="device__model slot" data-model="dosimetro" data-reveal>
+			<p class="slot__pending">Modelo 3D · pendiente</p>
+		</div>
+		<div class="device__copy" data-reveal>
+			<p class="eyebrow">Dispositivo 1</p>
+			<h3 class="subtitle">Crew Active Dosimeter</h3>
+			<p class="prose">
+				Dosímetro activo personal. Dos cámaras de iones detectan la radiación ionizante y registran la dosis
+				absorbida en dos rangos de exposición.
+			</p>
+			<div class="device__groups device__groups--single">
+				<div class="device__group">
+					<h4>Registra</h4>
+					<ul class="device__list">
+						{dosimeter.map((item) => <li>{item}</li>)}
+					</ul>
+				</div>
+				<div class="device__group">
+					<h4>Hardware</h4>
+					<ul class="device__list">
+						{dosimeterHardware.map(([part, role]) => (
+							<li>
+								<span>{part}</span>
+								<span class="tag">{role}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</article>
+
+	<article class="device device--flip">
+		<div class="device__model slot" data-model="signos-vitales" data-reveal>
+			<p class="slot__pending">Modelo 3D · pendiente</p>
+		</div>
+		<div class="device__copy" data-reveal>
+			<p class="eyebrow">Dispositivo 2</p>
+			<h3 class="subtitle">Signos vitales</h3>
+			<p class="prose">
+				Unos datos se miden directamente con sensores; otros se obtienen analizando esas mediciones.
+			</p>
+			<div class="device__groups">
+				{vitals.map((group) => (
+					<div class="device__group">
+						<h4>{group.system}</h4>
+						<ul class="device__list">
+							{group.items.map(([name, kind]) => (
+								<li>
+									<span>{name}</span>
+									<span class:list={['tag', kind === M ? 'tag--measure' : 'tag--analysis']}>{kind}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+				<div class="device__group device__group--wide">
+					<h4>Hardware</h4>
+					<ul class="device__list">
+						{hardware.map(([part, role]) => (
+							<li>
+								<span>{part}</span>
+								<span class="tag">{role}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
+		</div>
+	</article>
+</section>
+
+<style>
+	.devices {
+		display: grid;
+		gap: clamp(2.5rem, 6vh, 4rem);
+		max-width: 76rem;
+		margin: 0 auto;
+		padding: clamp(2.5rem, 7vh, 5rem) var(--gutter);
+	}
+
+	.device {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		align-items: start;
+		gap: clamp(1.5rem, 4vw, 3.5rem);
+	}
+
+	/* El dispositivo 2 tiene más datos: la lista gana ancho y se parte en dos columnas. */
+	.device--flip {
+		grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+	}
+
+	.device__groups {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1.5rem 2.5rem;
+		margin-top: 1.5rem;
+	}
+
+	/* El modelo acompaña la lectura mientras se recorre la lista. */
+	.device__model {
+		position: sticky;
+		top: 12svh;
+	}
+
+	.device--flip .device__model {
+		order: 2;
+	}
+
+	.device__copy {
+		--reveal-delay: 0.15s;
+	}
+
+	.device__copy .prose {
+		margin-top: 0.75rem;
+		max-width: 34rem;
+	}
+
+	h4 {
+		margin: 0;
+		font-family: var(--mono);
+		font-weight: 500;
+		font-size: 0.88rem;
+		color: var(--regolith);
+	}
+
+	.device__list {
+		margin: 0.5rem 0 0;
+		padding: 0;
+		list-style: none;
+		border-top: 1px solid var(--line);
+	}
+
+	.device__list li {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.35rem 0;
+		border-bottom: 1px solid var(--line);
+		font-size: 0.84rem;
+		line-height: 1.45;
+		color: var(--soft);
+	}
+
+	.tag {
+		flex: none;
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--dim);
+	}
+
+	.device__groups--single {
+		grid-template-columns: 1fr;
+	}
+
+	.device__group--wide {
+		grid-column: 1 / -1;
+	}
+
+	.tag--measure {
+		color: var(--ocean);
+	}
+
+	.tag--analysis {
+		color: var(--gold);
+	}
+
+	@media (max-width: 720px) {
+		.device,
+		.device__groups {
+			grid-template-columns: 1fr;
+		}
+
+		.device__model {
+			position: static;
+		}
+
+		.device--flip .device__model {
+			order: 0;
+		}
+	}
+</style>

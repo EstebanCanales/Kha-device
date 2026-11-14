@@ -1,0 +1,246 @@
+---
+// Sistema solar en ASCII: el Sol y los ocho planetas en órbita, a vista fija.
+---
+
+<section class="solar" id="sistema-solar" aria-labelledby="solar-title">
+	<div class="solar__stage">
+		<canvas class="solar__canvas" aria-hidden="true"></canvas>
+
+		<div class="solar__copy">
+			<h2 id="solar-title">Dos lecturas, un resumen</h2>
+			<p>
+				Kha-device 01 recibe información médica y datos espaciales. Cada conjunto lo analiza un modelo especializado, y un
+				tercero combina ambos análisis en un solo resumen.
+			</p>
+		</div>
+	</div>
+</section>
+
+<style>
+	.solar {
+		position: relative;
+		height: 100svh;
+		background: var(--sky);
+	}
+
+	.solar__stage {
+		position: relative;
+		height: 100%;
+		overflow: hidden;
+	}
+
+	.solar__canvas {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	/* Fundidos arriba y abajo, y un velo a la izquierda para que el texto se lea sobre las órbitas. */
+	.solar__stage::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(to bottom, var(--sky), transparent 10%, transparent 88%, var(--sky)),
+			radial-gradient(ellipse 36% 38% at 15% 50%, var(--sky) 40%, transparent 85%);
+		pointer-events: none;
+	}
+
+	.solar__copy {
+		position: absolute;
+		z-index: 1;
+		left: var(--gutter);
+		top: 50%;
+		translate: 0 -50%;
+		max-width: min(26rem, 34vw);
+	}
+
+	h2 {
+		margin: 0;
+		font-family: var(--display);
+		font-weight: 400;
+		font-size: clamp(1.5rem, 2.6vw, 2.4rem);
+		line-height: 1.2;
+		letter-spacing: 0.03em;
+		text-transform: uppercase;
+		text-wrap: balance;
+	}
+
+	p {
+		margin: 1.5rem 0 0;
+		font-size: clamp(0.92rem, 1.1vw, 1.05rem);
+		line-height: 1.7;
+		color: var(--soft);
+	}
+
+	@media (max-width: 900px) {
+		.solar__stage::after {
+			background: linear-gradient(to bottom, var(--sky) 6%, transparent 44%, transparent 76%, var(--sky));
+		}
+
+		.solar__copy {
+			top: 12svh;
+			translate: none;
+			max-width: calc(100% - 2.5rem);
+		}
+	}
+</style>
+
+<script>
+	import { clamp01, glyph, hash, mount, noise, type Grid } from '../scripts/ascii';
+
+	const TILT = 0.42;
+	const STARS = ['#8196d2', '#d6c988', '#d68c78', '#88ccc2'];
+
+	// Radios de órbita comprimidos (a^0.55) para que quepan los ocho en pantalla.
+	const PLANETS = [
+		{ a: 0.6, size: 0.032, rgb: [196, 190, 182] },
+		{ a: 0.83, size: 0.05, rgb: [246, 208, 126] },
+		{ a: 1.0, size: 0.054, rgb: [64, 150, 255] },
+		{ a: 1.26, size: 0.042, rgb: [246, 98, 54] },
+		{ a: 2.48, size: 0.17, rgb: [240, 176, 112], bands: 9 },
+		{ a: 3.45, size: 0.14, rgb: [248, 216, 136], bands: 6, ring: true },
+		{ a: 5.05, size: 0.095, rgb: [120, 238, 240] },
+		{ a: 6.5, size: 0.09, rgb: [84, 122, 255] },
+	];
+
+	const canvas = document.querySelector<HTMLCanvasElement>('.solar__canvas');
+
+	let chars: string[] = [];
+	let inks: string[] = [];
+	let fills: string[] = [];
+
+	function draw(g: Grid, t: number) {
+		const { ctx, W, H, cw, ch, cols, rows } = g;
+		const size = cols * rows;
+		if (chars.length !== size) {
+			chars = new Array(size);
+			inks = new Array(size);
+			fills = new Array(size);
+		}
+		chars.fill('');
+		fills.fill('');
+
+		const set = (x: number, y: number, c: string, ink: string, fill = '') => {
+			const i = Math.floor(x / cw), j = Math.floor(y / ch);
+			if (i < 0 || j < 0 || i >= cols || j >= rows) return;
+			chars[j * cols + i] = c;
+			inks[j * cols + i] = ink;
+			fills[j * cols + i] = fill;
+		};
+
+		// Disco sombreado; `paint` devuelve brillo y color de cada celda, o null para dejarla vacía.
+		const disc = (cx: number, cy: number, r: number, paint: (nx: number, ny: number) => [number, string, string?] | null) => {
+			const i0 = Math.floor((cx - r) / cw), i1 = Math.floor((cx + r) / cw);
+			const j0 = Math.floor((cy - r) / ch), j1 = Math.floor((cy + r) / ch);
+			for (let j = j0; j <= j1; j++)
+				for (let i = i0; i <= i1; i++) {
+					const x = (i + 0.5) * cw, y = (j + 0.5) * ch;
+					const cell = paint((x - cx) / r, (y - cy) / r);
+					if (cell && glyph(cell[0]) !== ' ') set(x, y, glyph(cell[0]), cell[1], cell[2]);
+				}
+		};
+
+		// Encuadre fijo y cerrado: el sistema llena la pantalla; la órbita de Neptuno se sale por los lados.
+		const reach = 5;
+		const wide = W > 900;
+		const cx = wide ? W * 0.58 : W * 0.5;
+		const cy = wide ? H * 0.5 : H * 0.58;
+		const unit = Math.min(W * 0.5, (H * 0.36) / TILT) / reach;
+
+		const bodies = PLANETS.map((p, k) => {
+			const theta = hash(k, 7, 1) * Math.PI * 2 + (t * 0.3) / p.a ** 1.5;
+			return { p, theta, x: cx + Math.cos(theta) * p.a * unit, y: cy + Math.sin(theta) * p.a * unit * TILT };
+		});
+
+		// Órbitas: puntos tenues, con una estela más viva detrás de cada planeta.
+		for (const { p, theta } of bodies) {
+			const steps = Math.ceil((Math.PI * 2 * p.a * unit) / cw);
+			for (let n = 0; n < steps; n++) {
+				const ang = (n / steps) * Math.PI * 2;
+				let lag = (theta - ang) % (Math.PI * 2);
+				if (lag < 0) lag += Math.PI * 2;
+				const trail = clamp01(1 - lag / 1.1);
+				const k = 0.6 + trail * 0.4;
+				set(
+					cx + Math.cos(ang) * p.a * unit,
+					cy + Math.sin(ang) * p.a * unit * TILT,
+					trail > 0.6 ? '*' : trail > 0.2 ? '+' : ':',
+					`rgb(${(p.rgb[0] * k) | 0},${(p.rgb[1] * k) | 0},${(p.rgb[2] * k) | 0})`,
+				);
+			}
+		}
+
+		const planet = ({ p, x, y }: (typeof bodies)[number]) => {
+			const r = Math.max(unit * p.size * 1.5, cw * 2.6);
+			// La cara iluminada mira al Sol.
+			const len = Math.hypot(cx - x, cy - y) || 1;
+			const lx = ((cx - x) / len) * 0.9, ly = ((cy - y) / len) * 0.9;
+			const ringAt = (front: boolean) => {
+				if (!p.ring) return;
+				const steps = Math.ceil((r * 16) / cw);
+				for (const rad of [1.55, 1.8, 2.1])
+					for (let n = 0; n < steps; n++) {
+						const ang = (n / steps) * Math.PI * 2;
+						if (Math.sin(ang) > 0 !== front) continue;
+						set(x + Math.cos(ang) * r * rad, y + Math.sin(ang) * r * rad * 0.34, rad === 1.8 ? '=' : '-', 'rgb(232,208,150)');
+					}
+			};
+			ringAt(false);
+			disc(x, y, r, (nx, ny) => {
+				const rr = nx * nx + ny * ny;
+				if (rr > 1) return null;
+				const lit = clamp01(nx * lx + ny * ly + Math.sqrt(1 - rr) * 0.42);
+				const band = p.bands ? 0.86 + 0.14 * Math.sin(ny * p.bands) : 1;
+				const k = (0.58 + lit * 0.6) * band;
+				const tone = (m: number) => `rgb(${(p.rgb[0] * m) | 0},${(p.rgb[1] * m) | 0},${(p.rgb[2] * m) | 0})`;
+				// Relleno de la celda en el mismo tono: el planeta se ve lleno de color.
+				return [0.42 + lit * 0.5, tone(k), tone(k * 0.5)];
+			});
+			ringAt(true);
+		};
+
+		bodies.filter((b) => b.y < cy).forEach(planet);
+
+		// Sol: halo que se apaga con la distancia y disco granulado.
+		const sun = Math.max(unit * 0.24, cw * 2);
+		disc(cx, cy, sun * 2.4, (nx, ny) => {
+			const dist = Math.hypot(nx, ny) * 2.4;
+			if (dist > 2.4) return null;
+			if (dist > 1) {
+				const fall = (2.4 - dist) / 1.4;
+				return [fall * fall * 0.4, `rgb(${(255 * fall) | 0},${(150 * fall) | 0},${(50 * fall) | 0})`];
+			}
+			const grain = noise(nx * 5 + t * 0.2, ny * 5, t * 0.15);
+			const core = 1 - dist * dist;
+			return [
+				0.68 + grain * 0.32,
+				`rgb(255,${(190 + core * 60 + grain * 20) | 0},${(80 + core * 130) | 0})`,
+				`rgb(${(150 + core * 60) | 0},${(84 + core * 50) | 0},${(20 + core * 30) | 0})`,
+			];
+		});
+
+		bodies.filter((b) => b.y >= cy).forEach(planet);
+
+		for (let j = 0; j < rows; j++)
+			for (let i = 0; i < cols; i++) {
+				const c = chars[j * cols + i];
+				if (c) {
+					const fill = fills[j * cols + i];
+					if (fill) {
+						ctx.fillStyle = fill;
+						ctx.fillRect(i * cw, j * ch, cw + 0.5, ch + 0.5);
+					}
+					ctx.fillStyle = inks[j * cols + i];
+					ctx.fillText(c, i * cw, j * ch);
+				} else if (hash(i, j, 61) > 0.9982) {
+					ctx.fillStyle = STARS[(hash(i, j, 29) * STARS.length) | 0];
+					ctx.fillText(".+'"[(hash(i, j, 5) * 3) | 0], i * cw, j * ch);
+				}
+			}
+	}
+
+	if (canvas) mount(canvas, { fontSize: (w) => (w < 640 ? 7 : 8), draw, stillAt: 40 });
+</script>

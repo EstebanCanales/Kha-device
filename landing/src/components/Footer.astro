@@ -1,0 +1,191 @@
+---
+// Pie de página: el logo redibujado en ASCII y los enlaces del proyecto.
+const repo = 'https://github.com/EstebanCanales/Kha-device';
+const groups = [
+	{
+		title: 'En esta página',
+		links: [
+			['Video', '#video'],
+			['Tecnología', '#tecnologia'],
+			['Dispositivos', '#dispositivos'],
+			['Cómo funciona', '#funcionamiento'],
+			['Inteligencia artificial', '#ia'],
+			['Sistema solar', '#sistema-solar'],
+		],
+	},
+	{
+		title: 'Proyecto',
+		links: [
+			['Repositorio en GitHub', repo],
+			['Módulo de IA', `${repo}/tree/main/ia`],
+		],
+	},
+	{
+		title: 'Modelos',
+		links: [
+			['Salud · Llama 3.2 3B médico', 'https://huggingface.co/MohamedAhmedAE/Llama-3.2-3B-Instruct-Medical-Finetuned-merged'],
+			['Astronomía · LoRA sobre Llama 3.2 3B', 'https://huggingface.co/ojayy/llama32-3b-mmlu-astronomy-lora'],
+			['Síntesis · IBM Granite 3.3 2B', 'https://huggingface.co/ibm-granite/granite-3.3-2b-instruct'],
+		],
+	},
+];
+---
+
+<footer class="footer">
+	<canvas class="footer__logo" data-src="/klaskhaIcon.png" role="img" aria-label="Logo del proyecto dibujado en ASCII"></canvas>
+
+	<nav class="footer__nav" aria-label="Enlaces del proyecto">
+		{
+			groups.map((group) => (
+				<div>
+					<h2>{group.title}</h2>
+					<ul>
+						{group.links.map(([label, href]) => (
+							<li>
+								<a href={href} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
+									{label}
+								</a>
+							</li>
+						))}
+					</ul>
+				</div>
+			))
+		}
+	</nav>
+</footer>
+
+<style>
+	.footer {
+		display: grid;
+		grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+		align-items: center;
+		gap: clamp(2rem, 6vw, 5rem);
+		max-width: 76rem;
+		margin: 0 auto;
+		padding: clamp(2.5rem, 7vh, 5rem) var(--gutter);
+		border-top: 1px solid var(--line);
+	}
+
+	.footer__logo {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1;
+	}
+
+	.footer__nav {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 2rem;
+	}
+
+	h2 {
+		margin: 0 0 0.9rem;
+		font-family: var(--mono);
+		font-weight: 400;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--dim);
+	}
+
+	ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	li + li {
+		margin-top: 0.5rem;
+	}
+
+	a {
+		font-size: 0.88rem;
+		line-height: 1.5;
+		color: var(--soft);
+		text-decoration: none;
+	}
+
+	a:hover {
+		color: var(--regolith);
+		text-decoration: underline;
+		text-underline-offset: 0.25em;
+	}
+
+	a:focus-visible {
+		outline: 1px solid var(--ocean);
+		outline-offset: 3px;
+	}
+
+	@media (max-width: 820px) {
+		.footer {
+			grid-template-columns: 1fr;
+		}
+
+		.footer__logo {
+			max-width: 12rem;
+		}
+
+		.footer__nav {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
+
+<script>
+	import { mount } from '../scripts/ascii';
+
+	const SHADE = ' .:-=+*#%@';
+	// El logo es oscuro sobre blanco; aquí va sobre negro, así que cada tinta se aclara.
+	const INKS = { mark: [217, 213, 208], navy: [98, 124, 220], gold: [244, 186, 78] };
+
+	const canvas = document.querySelector<HTMLCanvasElement>('.footer__logo');
+	if (canvas) {
+		const image = new Image();
+		const sampler = document.createElement('canvas');
+		const sctx = sampler.getContext('2d', { willReadFrequently: true })!;
+		let pixels: Uint8ClampedArray | null = null;
+		let size = '';
+
+		const scene = mount(canvas, {
+			fontSize: () => 6,
+			stillAt: 0,
+			draw({ ctx, cw, ch, cols, rows }, t) {
+				if (!image.complete || !image.naturalWidth) return;
+				// Una muestra del logo por celda; se recalcula solo si cambia la rejilla.
+				if (size !== `${cols}x${rows}`) {
+					size = `${cols}x${rows}`;
+					sampler.width = cols;
+					sampler.height = rows;
+					sctx.fillStyle = '#fff';
+					sctx.fillRect(0, 0, cols, rows);
+					sctx.imageSmoothingQuality = 'high';
+					sctx.drawImage(image, 0, 0, cols, rows);
+					pixels = sctx.getImageData(0, 0, cols, rows).data;
+				}
+				if (!pixels) return;
+
+				for (let j = 0; j < rows; j++)
+					for (let i = 0; i < cols; i++) {
+						const o = (j * cols + i) * 4;
+						const r = pixels[o], g = pixels[o + 1], b = pixels[o + 2];
+						// Cuánta tinta hay en la celda, y de qué color es al quitarle el blanco del fondo.
+						const a = 1 - Math.min(r, g, b) / 255;
+						if (a < 0.12) continue;
+						const pr = (r - 255 * (1 - a)) / a, pb = (b - 255 * (1 - a)) / a;
+						const kind = pb > pr + 25 ? 'navy' : pr > pb + 60 ? 'gold' : 'mark';
+						const weight = kind === 'mark' ? 1 : kind === 'navy' ? 0.8 : 0.62;
+						// Las estrellas y el arco dorado titilan apenas.
+						const k = kind === 'gold' ? 0.82 + 0.18 * Math.sin(t * 1.6 + i * 0.5 + j * 0.3) : 1;
+						const ink = INKS[kind];
+						const c = SHADE[Math.min(SHADE.length - 1, Math.round(a * weight * (SHADE.length - 1)))];
+						if (c === ' ') continue;
+						ctx.fillStyle = `rgb(${(ink[0] * k) | 0},${(ink[1] * k) | 0},${(ink[2] * k) | 0})`;
+						ctx.fillText(c, i * cw, j * ch);
+					}
+			},
+		});
+
+		image.onload = () => scene.paint();
+		image.src = canvas.dataset.src ?? '';
+	}
+</script>
