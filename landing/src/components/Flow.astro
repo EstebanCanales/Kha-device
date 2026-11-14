@@ -297,44 +297,39 @@ const steps = [
 </style>
 
 <script>
-	import { BG, hash, mount, noise, smooth, type Grid } from '../scripts/ascii';
+	import { BG, clamp01, hash, mount, noise, smooth } from '../scripts/ascii';
 
-	const CORAL = [240, 104, 100];
-	const BLUE = [110, 160, 246];
-	const GOLD = [216, 180, 106];
-	const TEAL = [120, 220, 210];
-	const WHITE = [240, 240, 236];
-	const ink = (c: number[], k: number) => `rgb(${(c[0] * k) | 0},${(c[1] * k) | 0},${(c[2] * k) | 0})`;
-	const mix = (a: number[], b: number[], k: number) => a.map((v, n) => v + (b[n] - v) * k);
+	type RGB = readonly number[];
+	const CORAL: RGB = [244, 110, 104];
+	const BLUE: RGB = [112, 164, 250];
+	const SKY: RGB = [160, 188, 240];
+	const GOLD: RGB = [226, 188, 108];
+	const TEAL: RGB = [120, 224, 212];
+	const WHITE: RGB = [240, 240, 236];
+	const mix = (a: RGB, b: RGB, k: number) => a.map((v, n) => v + (b[n] - v) * k);
+	const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 	const bump = (p: number, at: number, width: number) => Math.exp(-(((p - at) / width) ** 2));
-	const beat = (p: number) =>
-		0.1 * bump(p, 0.2, 0.035) - 0.1 * bump(p, 0.375, 0.01) + bump(p, 0.4, 0.011) - 0.22 * bump(p, 0.425, 0.011) + 0.24 * bump(p, 0.63, 0.055);
 	// Onda de pulso óptica: subida redonda y un segundo hombro más bajo.
 	const wave = (p: number) => bump(p, 0.3, 0.13) + 0.45 * bump(p, 0.58, 0.14);
+	// Latido para el carril vertical: ondas P, Q, R, S y T más anchas, para que el pico ocupe varias filas.
+	const ecg = (p: number) =>
+		0.12 * bump(p, 0.16, 0.05) - 0.16 * bump(p, 0.32, 0.026) + bump(p, 0.4, 0.04) - 0.32 * bump(p, 0.48, 0.028) + 0.3 * bump(p, 0.7, 0.08);
 	const frac = (x: number) => x - Math.floor(x);
 
-	/**
-	 * Dibuja una curva x(y) que baja por la pantalla: `|` en los tramos rectos,
-	 * `/` `\` en las pendientes y `-` en los saltos laterales. `x` va en columnas.
-	 */
-	function traceDown(g: Grid, from: number, to: number, x: (y: number) => number, color: (j: number) => string | null) {
-		const { ctx, cw, ch, cols } = g;
-		const put = (i: number, j: number, c: string) => i >= 0 && i < cols && ctx.fillText(c, i * cw, j * ch);
-		for (let j = from; j < to; j++) {
-			const fill = color(j);
-			if (!fill) continue;
-			let min = Infinity, max = -Infinity;
-			for (let s = 0; s <= 4; s++) {
-				const v = x(j + s / 4);
-				if (v < min) min = v;
-				if (v > max) max = v;
-			}
-			ctx.fillStyle = fill;
-			const span = max - min, i = Math.floor((min + max) / 2);
-			if (span < 0.9) put(i, j, '|');
-			else if (span < 1.8) put(i, j, x(j + 1) > x(j) ? '\\' : '/');
-			else for (let c = Math.floor(min); c <= Math.floor(max - 0.01); c++) put(c, j, '-');
-		}
+	// Rampa corta y tramado ordenado 4×4: degradados limpios, sin ruido.
+	const SHADE = ' .:-=+*#%@';
+	const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+	const shade = (v: number, i: number, j: number) =>
+		SHADE[Math.min(SHADE.length - 1, Math.floor(clamp01(v) * (SHADE.length - 1) + BAYER[(j & 3) * 4 + (i & 3)] / 16))];
+
+	/** Un cauce en una fila: por dónde pasa su centro, qué ancho tiene, de qué color es y cuánta luz lleva. */
+	interface Band {
+		c: (y: number) => number;
+		w: number;
+		rgb: RGB;
+		gain: number;
+		/** Textura propia del cauce en la celda (0 a 1); por defecto, un flujo suave. */
+		tex?: (i: number) => number;
 	}
 
 	const canvas = document.querySelector<HTMLCanvasElement>('.flow__signal');
@@ -343,6 +338,7 @@ const steps = [
 	if (canvas && body && items.length) {
 		// La señal llega hasta esta altura de la ventana; por debajo aún no se ha dibujado.
 		const HEAD = 0.62;
+		const calm = matchMedia('(prefers-reduced-motion: reduce)');
 
 		// Dónde empieza cada paso, en píxeles desde el borde superior del carril.
 		let bounds: number[] = [];
@@ -352,155 +348,186 @@ const steps = [
 			bounds.push(box.height);
 		};
 
-		const calm = matchMedia('(prefers-reduced-motion: reduce)');
-
 		mount(canvas, {
-			fontSize: (w) => (w < 150 ? 8 : 12),
+			fontSize: (w) => (w < 150 ? 8 : 11),
 			weight: 500,
 			stillAt: 2,
-			draw(g, t) {
+			draw({ ctx, W, H, cw, ch, cols, rows }, t) {
 				if (bounds.length !== items.length + 1) measure();
-				const { ctx, W, H, cw, ch, cols, rows } = g;
-				// Fila donde empieza el paso n (admite fracciones: 2.4 es el 40 % del tercer paso).
+				// Paso (con fracción) al que pertenece una fila: 2.4 es el 40 % del tercer paso.
+				const stage = (j: number) => {
+					const y = j * ch;
+					let k = 0;
+					while (k < bounds.length - 2 && y >= bounds[k + 1]) k++;
+					return k + clamp01((y - bounds[k]) / Math.max(1, bounds[k + 1] - bounds[k]));
+				};
+
+				// Tres carriles: dosímetro, signos vitales y temperatura. Al final, uno solo en el centro.
+				const D = cols * 0.22, V = cols * 0.58, T = cols * 0.9;
+				const C = (D + V) / 2;
+				const amp = cols * 0.22;
+				const per = 18;
+				// Todo baja: las formas dependen de (fila - velocidad · t).
+				const travel = t * 6;
+				const drop = Math.floor(travel);
+				const optic = (y: number) => wave(frac((y - travel) / per));
+				// El electrocardiograma va más lento y más grande que el resto: un latido cada 40 filas.
+				const heart = (y: number) => frac((y - travel) / 40);
+				// Fila (con fracción de paso) → fila del carril.
 				const at = (n: number) => {
 					const k = Math.min(Math.floor(n), bounds.length - 2);
 					return Math.round((bounds[k] + (bounds[k + 1] - bounds[k]) * (n - k)) / ch);
 				};
-				const put = (c: string, i: number, j: number) => ctx.fillText(c, i * cw, j * ch);
-				const span = (a: number, b: number, j: number) => (j - at(a)) / Math.max(1, at(b) - at(a));
+				// Final del recorrido: el resumen, un recuadro donde desemboca el cauce.
+				const boxW = Math.min(cols - 2, 30), boxH = 11;
+				const boxTop = Math.min(at(5.6), rows - boxH - 1);
+				const boxLeft = Math.max(1, Math.min(cols - boxW - 1, Math.round(C - boxW / 2)));
+				const packet = (j: number) => ((((j - drop) % 7) + 7) % 7 < 4 ? 1 : 0);
 
-				// Tres carriles: dosímetro, signos vitales y temperatura.
-				const D = Math.round(cols * 0.2) + 0.5;
-				const V = Math.round(cols * 0.56) + 0.5;
-				const T = Math.round(cols * 0.9) + 0.5;
-				const Di = Math.floor(D), Vi = Math.floor(V);
-				const amp = cols * 0.24;
-				const per = 16;
-				// Todo baja: las formas dependen de (fila - velocidad · t).
-				const travel = t * 6;
-				const optic = (y: number) => wave(frac((y - travel) / per));
-				const pulse = (y: number) => beat(frac((y - travel) / per));
-				const bead = (j: number) => 0.62 + 0.38 * Math.max(0, Math.sin(j * 0.42 - t * 3)) ** 3;
-				const moving = (j: number) => j - Math.floor(travel);
+				// Qué cauces pasan por la fila j.
+				const bandsAt = (j: number, p: number): Band[] => {
+					const out: Band[] = [];
+					const s = Math.floor(p), f = p - s;
+					const meet = smooth(5, 5.45, p);
 
-				// Guías de carril: tres canales punteados de arriba abajo.
-				ctx.fillStyle = '#1c2540';
-				for (let j = 1; j < rows; j += 3) {
-					put('.', Di, j);
-					put('.', Vi, j);
-					if (j < at(2)) put('.', Math.floor(T), j);
-				}
-
-				// 1 · Sensores.
-				// Dosímetro: partículas de radiación que caen sobre la cámara.
-				for (let j = at(0) + 1; j < at(1); j++)
-					for (let i = Di - 4; i <= Di + 4; i++) {
-						const h = hash(i, moving(j), 77);
-						if (h < 0.86) continue;
-						ctx.fillStyle = ink(GOLD, 0.5 + (h - 0.86) * 3.5);
-						put(h > 0.965 ? '*' : h > 0.92 ? '+' : '.', i, j);
-					}
-				// Signos vitales: onda analógica, con ruido.
-				traceDown(
-					g,
-					at(0) + 1,
-					at(1),
-					(y) => V - amp * 0.4 + optic(y) * amp * 0.95 + (noise((y - travel) * 0.7, 3, 0) - 0.5) * 1.6,
-					() => '#9ab4ea',
-				);
-
-				// Temperatura: va por su cuenta y entra directo al microcontrolador, sin pasar por el MAX86178.
-				traceDown(
-					g,
-					at(0) + 1,
-					at(2.45),
-					(y) => T + (V - T) * smooth(at(2.05), at(2.45), y),
-					(j) => (j < at(2) && j % 2 ? null : ink(TEAL, bead(j))),
-				);
-
-				// 2 · Adquisición.
-				// Dosímetro: la dosis se acumula, una barra sólida que crece hacia abajo.
-				for (let j = at(1) + 1; j < at(2); j++) {
-					const width = 2 + Math.floor(span(1, 2, j) * 8);
-					ctx.fillStyle = ink(GOLD, 0.3);
-					ctx.fillRect((Di - 4) * cw, j * ch, width * cw, ch + 0.5);
-					ctx.fillStyle = ink(GOLD, bead(j) * 1.15);
-					for (let i = 0; i < width; i++) put(i === width - 1 ? ']' : '=', Di - 4 + i, j);
-				}
-				// Signos vitales: la curva se vuelve muestras.
-				for (let j = at(1) + 1; j < at(2); j += 2) {
-					const start = Math.floor(V - amp * 0.4);
-					const end = Math.max(start, Math.floor(V - amp * 0.4 + optic(j) * amp * 0.95));
-					ctx.fillStyle = '#4a64a0';
-					for (let i = start; i < end; i++) put('-', i, j);
-					ctx.fillStyle = ink(BLUE, 1.1);
-					put('+', end, j);
-				}
-
-				// 3 · Proceso en el dispositivo: las lecturas viajan en paquetes.
-				for (let j = at(2) + 1; j < at(3); j++) {
-					const k = ((moving(j) % 6) + 6) % 6;
-					if (k > 3) continue;
-					const cap = k === 0 || k === 3;
-					for (const [lane, color] of [[Di, GOLD], [Vi, WHITE]] as const) {
-						if (!cap) {
-							ctx.fillStyle = ink(color, 0.28);
-							ctx.fillRect((lane - 1) * cw, j * ch, cw * 3, ch + 0.5);
+					if (s === 0) {
+						// Radiación: partículas sueltas que caen sobre la cámara.
+						out.push({ c: () => D, w: 4.2, rgb: GOLD, gain: 1, tex: (i) => (hash(i, j - drop, 77) > 0.74 ? 1 : 0) });
+						// Pulso analógico: el cauce serpentea con cada latido.
+						out.push({ c: (y) => V + (optic(y) - 0.4) * amp, w: 1.9, rgb: SKY, gain: 1 });
+					} else if (s === 1) {
+						// La dosis se acumula: el cauce se ensancha.
+						out.push({ c: () => D, w: 1.2 + f * 3.6, rgb: GOLD, gain: 1 });
+						// El pulso se vuelve muestras: escalones de dos filas, con una fila apagada entre medias.
+						const held = Math.floor(j / 3) * 3;
+						out.push({ c: () => V + (optic(held) - 0.4) * amp, w: 1.7, rgb: BLUE, gain: j % 3 === 2 ? 0 : 1 });
+					} else if (s === 2) {
+						// Paquetes: las lecturas viajan en bloques.
+						out.push({ c: () => D, w: 2.4, rgb: GOLD, gain: packet(j) });
+						out.push({ c: () => V, w: 2.4, rgb: WHITE, gain: packet(j + 3) });
+					} else if (s === 3) {
+						// Señales limpias: la dosis ya es dato espacial; el ECG late hacia la derecha.
+						out.push({ c: () => D, w: 2, rgb: mix(GOLD, BLUE, f), gain: 1 });
+						// Línea base punteada y, sobre ella, el latido: el pico R sale lejos y brilla más.
+						out.push({ c: () => V, w: 0.45, rgb: [96, 110, 150], gain: j % 2 ? 0 : 0.3, tex: () => 1 });
+						const lift = Math.abs(ecg(heart(j + 0.5)));
+						out.push({ c: (y) => V + ecg(heart(y)) * amp * 1.5, w: 1.5 + lift * 0.9, rgb: mix(CORAL, WHITE, lift * 0.6), gain: 1, tex: () => 0.8 + lift * 0.2 });
+					} else {
+						// Dos análisis en paralelo que acaban uniéndose.
+						const open = s === 4 ? smooth(0, 0.25, f) : 1;
+						const width = lerp(2, 3, open);
+						if (j < boxTop) {
+							out.push({ c: () => lerp(D, C, meet), w: width, rgb: mix(BLUE, WHITE, meet), gain: 1 });
+							out.push({ c: () => lerp(V, C, meet), w: width, rgb: mix(CORAL, WHITE, meet), gain: 1 });
 						}
-						ctx.fillStyle = ink(color, 0.95);
-						for (let i = -2; i <= 2; i++) put(cap ? '=' : Math.abs(i) === 2 ? '|' : '#', lane + i, j);
+						// Resumen: un solo cauce blanco que termina en punta.
+						if (p > 5.4 && j < boxTop) out.push({ c: () => C, w: 3.4, rgb: WHITE, gain: smooth(5.4, 5.5, p) });
+					}
+
+					// Temperatura: va aparte y entra directo al microcontrolador, sin pasar por el MAX86178.
+					if (p < 2.5) {
+						const join = smooth(2.05, 2.5, p);
+						out.push({ c: () => lerp(T, V, join), w: 1.1, rgb: TEAL, gain: p < 2 && j % 3 === 0 ? 0 : 1 });
+					}
+					return out;
+				};
+
+				// Solo se calculan las filas que están en pantalla.
+				const top = canvas.getBoundingClientRect().top;
+				const first = Math.max(0, Math.floor(-top / ch) - 1);
+				const last = Math.min(rows, Math.ceil((innerHeight - top) / ch) + 1);
+
+				for (let j = first; j < last; j++) {
+					const p = stage(j);
+					const bands = bandsAt(j, p).filter((b) => b.gain > 0 && b.w > 0.2);
+					// Tramo que recorre el centro dentro de la fila: así los picos quedan unidos y no a saltos.
+					const spans = bands.map((b) => {
+						const a = b.c(j), m = b.c(j + 0.5), z = b.c(j + 1);
+						return [Math.min(a, m, z), Math.max(a, m, z)];
+					});
+					for (let i = 0; i < cols; i++) {
+						let best = 0, glow = 0, rgb: RGB = WHITE;
+						for (let n = 0; n < bands.length; n++) {
+							const b = bands[n];
+							const x = i + 0.5;
+							const dx = x < spans[n][0] ? spans[n][0] - x : x > spans[n][1] ? x - spans[n][1] : 0;
+							const d = Math.exp(-((dx / (b.w * 1.3)) ** 2) * 1.6);
+							if (d < 0.08) continue;
+							const tex = b.tex ? b.tex(i) : 0.72 + 0.28 * noise(i * 0.4, (j - travel) * 0.22, n * 9);
+							const v = d * tex * b.gain;
+							if (v > best) {
+								best = v;
+								glow = d * b.gain * (b.tex ? tex : 1);
+								rgb = b.rgb;
+							}
+						}
+						if (best < 0.06) continue;
+						const c = shade(best * 1.1, i, j);
+						// Relleno de la celda en el mismo tono: el cauce se ve sólido y no como trazos sueltos.
+						const under = glow * 0.26;
+						ctx.fillStyle = `rgb(${(rgb[0] * under) | 0},${(rgb[1] * under) | 0},${(rgb[2] * under) | 0})`;
+						ctx.fillRect(i * cw, j * ch, cw + 0.5, ch + 0.5);
+						if (c === ' ') continue;
+						const k = 0.55 + 0.45 * best;
+						ctx.fillStyle = `rgb(${(rgb[0] * k) | 0},${(rgb[1] * k) | 0},${(rgb[2] * k) | 0})`;
+						ctx.fillText(c, i * cw, j * ch);
 					}
 				}
 
-				// 4 · Software: señales limpias. El ECG late hacia la derecha; la dosis sube en escalones.
-				ctx.fillStyle = '#56648a';
-				for (let j = at(3) + 1; j < at(4); j += 2) put(':', Vi - 2, j);
-				traceDown(g, at(3) + 1, at(4), (y) => V + pulse(y) * amp * 1.3, (j) => ink(CORAL, bead(j) * 1.1));
-				traceDown(
-					g,
-					at(3) + 1,
-					at(4),
-					(y) => D - 3 + Math.floor(span(3, 4, y) * 4),
-					(j) => ink(mix(GOLD, BLUE, span(3, 4, j)), bead(j) * 1.1),
-				);
-
-				// 5 y 6 · Dos análisis que bajan en paralelo y se unen en un resumen.
-				const C = Math.round((D + V) / 2) + 0.5;
-				const join = at(5.4);
-				const close = (y: number) => smooth(at(5), join, y);
-				for (const [lane, color] of [[V, CORAL], [D, BLUE]] as const) {
-					traceDown(g, at(4) + 1, join, (y) => lane + (C - lane) * close(y), (j) => ink(color, bead(j) * 1.1));
-					// Doble trazo: cada análisis es un cauce, no un hilo.
-					traceDown(g, at(4) + 1, at(5), () => lane + 1, (j) => ink(color, bead(j + 4) * 0.7));
+				// El resumen: un recuadro con tres renglones (hallazgos, incertidumbres y datos faltantes) que se escriben solos.
+				if (boxTop < last && boxTop + boxH > first) {
+					const x0 = boxLeft * cw, y0 = boxTop * ch;
+					ctx.fillStyle = '#0f1730';
+					ctx.fillRect(x0, y0, boxW * cw, boxH * ch);
+					ctx.fillStyle = 'rgb(200,204,214)';
+					for (let i = 0; i < boxW; i++) {
+						const corner = i === 0 || i === boxW - 1;
+						ctx.fillText(corner ? '+' : '=', (boxLeft + i) * cw, y0);
+						ctx.fillText(corner ? '+' : '=', (boxLeft + i) * cw, (boxTop + boxH - 1) * ch);
+					}
+					for (let r = 1; r < boxH - 1; r++) {
+						ctx.fillText('|', x0, (boxTop + r) * ch);
+						ctx.fillText('|', (boxLeft + boxW - 1) * cw, (boxTop + r) * ch);
+					}
+					const cycle = calm.matches ? 3 : (t * 0.3) % 3.4;
+					const lines: [string, RGB, number][] = [
+						['+', WHITE, 1],
+						['?', GOLD, 0.72],
+						['-', [136, 146, 170], 0.5],
+					];
+					lines.forEach(([mark, rgb, len], n) => {
+						const row = boxTop + 2 + n * 3;
+						const typed = clamp01((cycle - n * 0.45) / 0.7);
+						const full = Math.round((boxW - 10) * len);
+						const shown = Math.round(full * typed);
+						ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+						ctx.fillText('[', (boxLeft + 2) * cw, row * ch);
+						ctx.fillText(typed > 0 ? mark : ' ', (boxLeft + 3) * cw, row * ch);
+						ctx.fillText(']', (boxLeft + 4) * cw, row * ch);
+						for (let i = 0; i < shown; i++) ctx.fillText('=', (boxLeft + 6 + i) * cw, row * ch);
+						// Cursor mientras se escribe el renglón.
+						if (typed > 0 && typed < 1) ctx.fillText('#', (boxLeft + 6 + shown) * cw, row * ch);
+						// Segundo renglón, más corto y tenue: el detalle de cada apartado.
+						ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.45)`;
+						for (let i = 0; i < Math.round(shown * 0.6); i++) ctx.fillText('-', (boxLeft + 6 + i) * cw, (row + 1) * ch);
+					});
 				}
-				const end = Math.min(rows - 3, at(6) - 3);
-				const Ci = Math.floor(C);
-				for (let j = join; j < end; j++) {
-					ctx.fillStyle = ink(WHITE, 0.25);
-					ctx.fillRect((Ci - 1) * cw, j * ch, cw * 4, ch + 0.5);
-					ctx.fillStyle = ink(WHITE, bead(j) * 1.05);
-					for (let i = -1; i <= 2; i++) put(i === -1 || i === 2 ? '|' : '#', Ci + i, j);
-				}
-				ctx.fillStyle = ink(WHITE, 1);
-				put('\\', Ci, end);
-				put('/', Ci + 1, end);
 
 				// La señal solo está dibujada hasta donde ha bajado la página.
 				if (!calm.matches) {
-					const head = innerHeight * HEAD - canvas.getBoundingClientRect().top;
+					const head = innerHeight * HEAD - top;
 					if (head < H) {
-						const fade = ctx.createLinearGradient(0, head - 40, 0, head + 90);
+						const fade = ctx.createLinearGradient(0, head, 0, head + 110);
 						fade.addColorStop(0, 'rgba(7,11,23,0)');
-						fade.addColorStop(1, 'rgba(7,11,23,0.88)');
+						fade.addColorStop(1, 'rgba(7,11,23,0.9)');
 						ctx.fillStyle = fade;
-						ctx.fillRect(0, Math.max(0, head - 40), W, H);
-						// Cabeza de la señal: una línea de luz que cruza el carril.
+						ctx.fillRect(0, Math.max(0, head), W, H);
+						// Cabeza de la señal: una línea fina de luz que cruza el carril.
 						if (head > 0) {
-							const row = Math.floor(head / ch);
 							ctx.fillStyle = BG;
-							ctx.fillRect(0, row * ch, W, ch);
-							ctx.fillStyle = ink(WHITE, 0.9);
-							for (let i = 1; i < cols - 1; i++) put(i % 2 ? '-' : '=', i, row);
+							ctx.fillRect(0, head - 1, W, 3);
+							ctx.fillStyle = 'rgba(240,240,236,0.75)';
+							ctx.fillRect(0, head, W, 1);
 						}
 					}
 				}
