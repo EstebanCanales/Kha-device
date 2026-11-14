@@ -5,7 +5,7 @@ confirmadas del arnés ni del dosímetro. Ningún `SensorCapability` se crea o h
 automáticamente. La ingesta debe comprobar capacidad, asignación temporal,
 procedencia y validez de cada valor dentro de una transacción antes de guardar.
 
-- Las claves primarias de los once modelos de `monitoring` son UUID v4 generados
+- Las claves primarias de los modelos de `monitoring` son UUID v4 generados
   al crear cada fila; las claves foráneas almacenan el UUID de la fila relacionada.
   Los identificadores legibles de participante, sesión, dispositivo y sensor son
   cadenas estables adicionales. `packet_id` es el UUID del evento enviado por el

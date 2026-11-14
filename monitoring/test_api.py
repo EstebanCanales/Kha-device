@@ -7,7 +7,18 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import CounterEpoch, Device, DeviceCredential, Measurement, MonitoringSession, Participant, Sensor, SensorCapability, SessionDevice, TelemetryPacket
+from .models import (
+    CounterEpoch,
+    Device,
+    DeviceCredential,
+    Measurement,
+    MonitoringSession,
+    Participant,
+    Sensor,
+    SensorCapability,
+    SessionDevice,
+    TelemetryPacket,
+)
 
 
 class TelemetryAPITests(TestCase):
@@ -67,6 +78,52 @@ class TelemetryAPITests(TestCase):
         self.assertEqual(client.patch(f"/api/v1/config/participants/{identifier}/", {"pseudonym": "synthetic-edited"}, format="json").status_code, 200)
         self.assertEqual(client.get(f"/api/v1/config/participants/{identifier}/").data["pseudonym"], "synthetic-edited")
         self.assertEqual(client.delete(f"/api/v1/config/participants/{identifier}/").status_code, 204)
+
+    def test_staff_can_create_connected_configuration_through_api(self):
+        client = APIClient()
+        client.force_authenticate(self.staff)
+        session = client.post("/api/v1/sessions/", {
+            "identifier": "session-api-created", "participant": str(self.participant.pk),
+            "started_at": (self.now - timedelta(days=1)).isoformat(),
+            "authorized_users": [self.reader.pk],
+        }, format="json")
+        self.assertEqual(session.status_code, 201, session.data)
+        device = client.post("/api/v1/config/devices/", {
+            "identifier": "dose-api-created", "kind": "dosimeter", "source": "simulated"
+        }, format="json")
+        self.assertEqual(device.status_code, 201, device.data)
+        sensor = client.post("/api/v1/config/sensors/", {
+            "identifier": "dose-channel-api", "device": str(device.data["id"]), "channel": "dose"
+        }, format="json")
+        self.assertEqual(sensor.status_code, 201, sensor.data)
+        bad_capability = client.post("/api/v1/config/capabilities/", {
+            "sensor": str(sensor.data["id"]), "metric": "absorbed_dose_cumulative", "unit": "uSv", "enabled": True
+        }, format="json")
+        self.assertEqual(bad_capability.status_code, 400)
+        capability = client.post("/api/v1/config/capabilities/", {
+            "sensor": str(sensor.data["id"]), "metric": "absorbed_dose_cumulative", "unit": "uGy", "enabled": True
+        }, format="json")
+        self.assertEqual(capability.status_code, 201, capability.data)
+        assignment = client.post("/api/v1/config/assignments/", {
+            "session": str(session.data["id"]), "device": str(device.data["id"]),
+            "assigned_at": (self.now - timedelta(days=1)).isoformat(),
+        }, format="json")
+        self.assertEqual(assignment.status_code, 201, assignment.data)
+        epoch = client.post("/api/v1/config/counter-epochs/", {
+            "assignment": str(assignment.data["id"]), "sensor": str(sensor.data["id"]),
+            "started_at": (self.now - timedelta(days=1)).isoformat(),
+        }, format="json")
+        self.assertEqual(epoch.status_code, 201, epoch.data)
+        self.assertTrue(epoch.data["identifier"])
+        reader = APIClient()
+        reader.force_authenticate(self.reader)
+        self.assertEqual(reader.get("/api/v1/sessions/").data["count"], 2)
+
+    def test_openapi_schema_lists_ingestion_and_history(self):
+        response = APIClient().get("/api/v1/schema/?format=json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/api/v1/telemetry/batches/", response.data["paths"])
+        self.assertIn("DeviceCredential", response.data["components"]["securitySchemes"])
 
     def test_valid_batch_is_visible_only_to_authorized_reader(self):
         response = self.send([self.packet()])

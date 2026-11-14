@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import (
@@ -52,11 +53,25 @@ class CleanModelSerializer(serializers.ModelSerializer):
         return instance
 
 
+def reject_changed(instance, data, fields):
+    errors = {}
+    for field in fields:
+        if field in data and getattr(instance, field) != data[field]:
+            errors[field] = "This field cannot be changed after creation."
+    if errors:
+        raise serializers.ValidationError(errors)
+
+
 class ParticipantSerializer(CleanModelSerializer):
     class Meta:
         model = Participant
         fields = ("id", "pseudonym", "created_at")
         read_only_fields = ("id", "created_at")
+
+    def validate(self, data):
+        if self.instance and self.instance.sessions.exists():
+            reject_changed(self.instance, data, ("pseudonym",))
+        return data
 
 
 class SessionSerializer(CleanModelSerializer):
@@ -69,12 +84,27 @@ class SessionSerializer(CleanModelSerializer):
         fields = ("id", "identifier", "participant", "started_at", "ended_at", "gravity_context", "gravity_context_source", "authorized_users")
         read_only_fields = ("id",)
 
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("identifier", "participant", "started_at"))
+            if self.instance.device_assignments.filter(packets__isnull=False).exists():
+                reject_changed(self.instance, data, ("gravity_context", "gravity_context_source"))
+                ended = data.get("ended_at")
+                if ended and self.instance.device_assignments.filter(packets__observed_at__gte=ended).exists():
+                    raise serializers.ValidationError({"ended_at": "Existing packets extend beyond this time."})
+        return data
+
 
 class DeviceSerializer(CleanModelSerializer):
     class Meta:
         model = Device
         fields = ("id", "identifier", "kind", "source", "is_active", "firmware_version")
         read_only_fields = ("id",)
+
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("identifier", "kind", "source"))
+        return data
 
 
 class SensorSerializer(CleanModelSerializer):
@@ -83,12 +113,24 @@ class SensorSerializer(CleanModelSerializer):
         fields = ("id", "identifier", "device", "channel", "body_site", "reference_frame", "profile_version", "calibration_reference", "is_active")
         read_only_fields = ("id",)
 
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("identifier", "device", "channel"))
+            if self.instance.measurements.exists() or self.instance.ecg_samples.exists():
+                reject_changed(self.instance, data, ("body_site", "reference_frame", "profile_version", "calibration_reference"))
+        return data
+
 
 class SensorCapabilitySerializer(CleanModelSerializer):
     class Meta:
         model = SensorCapability
         fields = ("id", "sensor", "metric", "unit", "enabled")
         read_only_fields = ("id",)
+
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("sensor", "metric", "unit"))
+        return data
 
 
 class SessionDeviceSerializer(CleanModelSerializer):
@@ -97,12 +139,28 @@ class SessionDeviceSerializer(CleanModelSerializer):
         fields = ("id", "session", "device", "assigned_at", "released_at")
         read_only_fields = ("id",)
 
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("session", "device", "assigned_at"))
+            released = data.get("released_at")
+            if released and self.instance.packets.filter(observed_at__gte=released).exists():
+                raise serializers.ValidationError({"released_at": "Existing packets extend beyond this time."})
+        return data
+
 
 class CounterEpochSerializer(CleanModelSerializer):
     class Meta:
         model = CounterEpoch
         fields = ("id", "identifier", "assignment", "sensor", "started_at", "ended_at", "reference")
         read_only_fields = ("id", "identifier")
+
+    def validate(self, data):
+        if self.instance:
+            reject_changed(self.instance, data, ("assignment", "sensor", "started_at"))
+            ended = data.get("ended_at")
+            if ended and self.instance.measurements.filter(packet__observed_at__gte=ended).exists():
+                raise serializers.ValidationError({"ended_at": "Existing measurements extend beyond this time."})
+        return data
 
 
 class StrictSerializer(serializers.Serializer):
@@ -122,9 +180,10 @@ class AwareDateTimeField(serializers.DateTimeField):
         return super().to_internal_value(value)
 
 
+@extend_schema_field({"type": "string", "pattern": r"^[+-]?\d+(?:\.\d+)?$", "maxLength": 64})
 class DecimalStringField(serializers.Field):
     def to_internal_value(self, value):
-        if not isinstance(value, str) or not re.fullmatch(r"[+-]?(?:\d+)(?:\.\d+)?", value):
+        if not isinstance(value, str) or len(value) > 64 or not re.fullmatch(r"[+-]?(?:\d+)(?:\.\d+)?", value):
             raise serializers.ValidationError("Use a finite decimal string.")
         try:
             number = Decimal(value)
@@ -175,6 +234,17 @@ class PacketInputSerializer(StrictSerializer):
 class BatchInputSerializer(StrictSerializer):
     schema_version = serializers.ChoiceField(choices=[1])
     packets = PacketInputSerializer(many=True, allow_empty=False, max_length=100)
+
+
+class PacketStatusSerializer(serializers.Serializer):
+    packet_id = serializers.UUIDField()
+    status = serializers.ChoiceField(choices=["inserted", "duplicate"])
+
+
+class BatchOutputSerializer(serializers.Serializer):
+    packets = PacketStatusSerializer(many=True)
+    inserted = serializers.IntegerField()
+    duplicates = serializers.IntegerField()
 
 
 class MeasurementSerializer(serializers.ModelSerializer):

@@ -7,7 +7,16 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from monitoring.models import CounterEpoch, Device, Metric, MonitoringSession, Participant, Sensor, SensorCapability, SessionDevice
+from monitoring.models import (
+    CounterEpoch,
+    Device,
+    Metric,
+    MonitoringSession,
+    Participant,
+    Sensor,
+    SensorCapability,
+    SessionDevice,
+)
 
 
 class Command(BaseCommand):

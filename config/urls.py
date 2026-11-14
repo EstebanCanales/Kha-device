@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView
 from rest_framework.routers import SimpleRouter
 
 from monitoring.views import (
@@ -44,6 +45,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include(router.urls)),
     path('api/v1/telemetry/batches/', TelemetryBatchView.as_view(), name='telemetry-batches'),
+    path('api/v1/schema/', SpectacularAPIView.as_view(), name='api-schema'),
     path('healthz/', healthz),
     path('readyz/', readyz),
 ]

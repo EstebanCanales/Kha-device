@@ -3,11 +3,13 @@
 from datetime import timedelta
 from io import BytesIO
 
+from django.conf import settings
 from django.db import IntegrityError, connection
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import is_aware
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import action
@@ -18,12 +20,22 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.conf import settings
-
 from .authentication import DeviceAuthentication, DeviceRateThrottle
-from .models import CounterEpoch, Device, DeviceCredential, Measurement, Metric, MonitoringSession, Participant, Sensor, SensorCapability, SessionDevice
+from .models import (
+    CounterEpoch,
+    Device,
+    DeviceCredential,
+    Measurement,
+    Metric,
+    MonitoringSession,
+    Participant,
+    Sensor,
+    SensorCapability,
+    SessionDevice,
+)
 from .serializers import (
     BatchInputSerializer,
+    BatchOutputSerializer,
     CounterEpochSerializer,
     DeviceSerializer,
     MeasurementSerializer,
@@ -109,6 +121,11 @@ class SensorCapabilityViewSet(ConfigurationViewSet):
     queryset = SensorCapability.objects.all().order_by("sensor__identifier", "metric", "unit")
     serializer_class = SensorCapabilitySerializer
 
+    def perform_destroy(self, instance):
+        if Measurement.objects.filter(sensor=instance.sensor, metric=instance.metric, unit=instance.unit).exists():
+            raise Conflict("Capability is referenced by historical measurements.")
+        super().perform_destroy(instance)
+
 
 class SessionDeviceViewSet(ConfigurationViewSet):
     queryset = SessionDevice.objects.all().order_by("-assigned_at", "id")
@@ -165,6 +182,8 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = MonitoringSession.objects.select_related("participant").order_by("-started_at", "id")
+        if not self.request.user.is_authenticated:
+            return queryset.none()
         if self.request.user.is_staff:
             return queryset
         return queryset.filter(authorized_users=self.request.user)
@@ -178,6 +197,14 @@ class SessionViewSet(viewsets.ModelViewSet):
         except ProtectedError as error:
             raise Conflict() from error
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("source", str, required=True, enum=Device.Source.values),
+            OpenApiParameter("metric", str), OpenApiParameter("sensor", str),
+            OpenApiParameter("observed_from", str), OpenApiParameter("observed_to", str),
+        ],
+        responses=MeasurementSerializer(many=True),
+    )
     @action(detail=True, methods=["get"])
     def measurements(self, request, pk=None):
         session = self.get_object()
@@ -185,6 +212,14 @@ class SessionViewSet(viewsets.ModelViewSet):
         page = self.paginate_queryset(readings)
         return self.get_paginated_response(MeasurementSerializer(page, many=True).data)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("source", str, required=True, enum=Device.Source.values),
+            OpenApiParameter("metric", str), OpenApiParameter("sensor", str),
+            OpenApiParameter("observed_from", str), OpenApiParameter("observed_to", str),
+        ],
+        responses=MeasurementSerializer(many=True),
+    )
     @action(detail=True, methods=["get"])
     def latest(self, request, pk=None):
         session = self.get_object()
@@ -206,6 +241,7 @@ class TelemetryBatchView(APIView):
     parser_classes = (LimitedJSONParser,)
     throttle_classes = (DeviceRateThrottle,)
 
+    @extend_schema(request=BatchInputSerializer, responses={200: BatchOutputSerializer, 201: BatchOutputSerializer})
     def post(self, request):
         if not isinstance(request.auth, DeviceCredential):
             raise NotAuthenticated("Device credentials are required.")

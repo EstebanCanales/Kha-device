@@ -2,7 +2,8 @@
 
 import hashlib
 import json
-from datetime import timedelta, timezone as utc_timezone
+from datetime import timedelta
+from datetime import timezone as utc_timezone
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -12,7 +13,15 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
-from .models import CounterEpoch, DeviceCredential, Measurement, MonitoringSession, Sensor, SessionDevice, TelemetryPacket
+from .models import (
+    CounterEpoch,
+    DeviceCredential,
+    Measurement,
+    MonitoringSession,
+    Sensor,
+    SessionDevice,
+    TelemetryPacket,
+)
 
 
 class PacketConflict(APIException):
