@@ -78,3 +78,32 @@ class MonitoringModelTests(TestCase):
                     device=self.device, observed_at=self.now, source=Device.Source.SIMULATED,
                     content_sha256="a" * 64,
                 )
+
+    def test_overlapping_assignment_is_rejected(self):
+        other_session = MonitoringSession.objects.create(
+            identifier="other-session", participant=self.participant, started_at=self.now
+        )
+        overlapping = SessionDevice(
+            session=other_session, device=self.device, assigned_at=self.now + timedelta(seconds=1)
+        )
+        with self.assertRaises(ValidationError):
+            overlapping.full_clean()
+
+    def test_packet_after_session_end_is_rejected(self):
+        self.session.ended_at = self.now + timedelta(seconds=2)
+        self.session.save()
+        with self.assertRaises(ValidationError):
+            self.packet.full_clean()
+
+    def test_counter_epoch_must_cover_measurement_time(self):
+        epoch = CounterEpoch.objects.create(
+            assignment=self.assignment, sensor=self.sensor,
+            started_at=self.now + timedelta(seconds=10),
+        )
+        reading = Measurement(
+            packet=self.packet, sensor=self.sensor, metric=Metric.ABSORBED_DOSE_CUMULATIVE,
+            value=Decimal("1"), unit="uGy", quality=Measurement.Quality.VALID,
+            counter_epoch=epoch,
+        )
+        with self.assertRaises(ValidationError):
+            reading.full_clean()

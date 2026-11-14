@@ -25,6 +25,9 @@ procedencia y validez de cada valor dentro de una transacción antes de guardar.
   acumulados requieren `CounterEpoch` ligado a la asignación histórica. El
   historial individual se reconstruye desde las sesiones del participante;
   no se calculan totales ni riesgo.
+- Las asignaciones de un dispositivo y las épocas de un contador no deben
+  solaparse. La validación de intervalos cerrados está en `clean()`; índices
+  únicos parciales impiden varias asignaciones o épocas abiertas en paralelo.
 - `Measurement.quality=missing` exige `value=NULL`; `valid` y `unreliable`
   exigen un valor. La comprobación de unidades compatibles y pertenencia entre
   relaciones está en `clean()`, por lo que la API y Admin deben llamar a

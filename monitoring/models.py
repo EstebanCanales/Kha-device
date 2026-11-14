@@ -109,7 +109,7 @@ class Sensor(models.Model):
     identifier = models.CharField(max_length=80, unique=True)
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="sensors")
     channel = models.CharField(max_length=80)
-    body_site = models.CharField(max_length=8f0, blank=True)
+    body_site = models.CharField(max_length=80, blank=True)
     reference_frame = models.CharField(max_length=80, blank=True)
     profile_version = models.CharField(max_length=80, blank=True)
     calibration_reference = models.CharField(max_length=120, blank=True)
@@ -146,8 +146,23 @@ class SessionDevice(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(released_at__isnull=True) | Q(released_at__gt=F("assigned_at")), name="assignment_end_after_start"),
             models.UniqueConstraint(fields=["session", "device", "assigned_at"], name="unique_assignment_start"),
+            models.UniqueConstraint(fields=["device"], condition=Q(released_at__isnull=True), name="one_open_assignment_per_device"),
         ]
         indexes = [models.Index(fields=["device", "assigned_at"])]
+
+    def clean(self):
+        if not self.device_id or not self.session_id or not self.assigned_at:
+            return
+        if self.assigned_at < self.session.started_at or (
+            self.session.ended_at and (not self.released_at or self.released_at > self.session.ended_at)
+        ):
+            raise ValidationError("Assignment must be within the monitoring session.")
+        overlaps = SessionDevice.objects.filter(device_id=self.device_id).exclude(pk=self.pk)
+        overlaps = overlaps.filter(Q(released_at__isnull=True) | Q(released_at__gt=self.assigned_at))
+        if self.released_at:
+            overlaps = overlaps.filter(assigned_at__lt=self.released_at)
+        if overlaps.exists():
+            raise ValidationError("Device assignments cannot overlap.")
 
 
 class CounterEpoch(models.Model):
@@ -157,7 +172,14 @@ class CounterEpoch(models.Model):
     assignment = models.ForeignKey(SessionDevice, on_delete=models.PROTECT, related_name="counter_epochs")
     sensor = models.ForeignKey(Sensor, on_delete=models.PROTECT, related_name="counter_epochs")
     started_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
     reference = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(ended_at__isnull=True) | Q(ended_at__gt=F("started_at")), name="epoch_end_after_start"),
+            models.UniqueConstraint(fields=["assignment", "sensor"], condition=Q(ended_at__isnull=True), name="one_open_epoch_per_sensor_assignment"),
+        ]
 
     def clean(self):
         if self.sensor_id and self.assignment_id and self.sensor.device_id != self.assignment.device_id:
@@ -165,6 +187,15 @@ class CounterEpoch(models.Model):
         if self.assignment_id and self.started_at:
             if self.started_at < self.assignment.assigned_at or (self.assignment.released_at and self.started_at >= self.assignment.released_at):
                 raise ValidationError("Counter epoch must start within the assignment.")
+            if self.ended_at and self.assignment.released_at and self.ended_at > self.assignment.released_at:
+                raise ValidationError("Counter epoch cannot end after the assignment.")
+        if self.assignment_id and self.sensor_id and self.started_at:
+            overlaps = CounterEpoch.objects.filter(assignment_id=self.assignment_id, sensor_id=self.sensor_id).exclude(pk=self.pk)
+            overlaps = overlaps.filter(Q(ended_at__isnull=True) | Q(ended_at__gt=self.started_at))
+            if self.ended_at:
+                overlaps = overlaps.filter(started_at__lt=self.ended_at)
+            if overlaps.exists():
+                raise ValidationError("Counter epochs cannot overlap.")
 
 
 class TelemetryPacket(models.Model):
@@ -189,6 +220,9 @@ class TelemetryPacket(models.Model):
         if self.assignment_id and self.observed_at:
             if self.observed_at < self.assignment.assigned_at or (self.assignment.released_at and self.observed_at >= self.assignment.released_at):
                 raise ValidationError("Packet time is outside the device assignment.")
+            session = self.assignment.session
+            if self.observed_at < session.started_at or (session.ended_at and self.observed_at >= session.ended_at):
+                raise ValidationError("Packet time is outside the monitoring session.")
 
 
 class Measurement(models.Model):
@@ -228,6 +262,10 @@ class Measurement(models.Model):
         if self.counter_epoch_id and self.sensor_id and self.packet_id:
             if self.counter_epoch.sensor_id != self.sensor_id or self.counter_epoch.assignment_id != self.packet.assignment_id:
                 errors["counter_epoch"] = "Counter epoch must match sensor and assignment."
+            elif self.packet.observed_at < self.counter_epoch.started_at or (
+                self.counter_epoch.ended_at and self.packet.observed_at >= self.counter_epoch.ended_at
+            ):
+                errors["counter_epoch"] = "Measurement time is outside the counter epoch."
         if errors:
             raise ValidationError(errors)
 
