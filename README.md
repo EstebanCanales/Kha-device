@@ -100,3 +100,5 @@ uv run python monitoring/sensors/vital_signs.py --url http://127.0.0.1:8000/api/
 The endpoint resolves the session from the registered device assignment at `measured_at`. The random run ID inside `event_id` is not a monitoring-session identifier. HTTP 201 means stored, 200 means an identical retry, and 409 means the same event identity was reused with different readings. `signal-loss` stores nulls; `invalid` deliberately produces rejected events. A credential cannot send for another device or a hardware profile. Read results through the existing session history endpoint with `source=simulated`.
 
 The simulator already performs HTTP sending when `--url` is provided; the endpoint receives and stores those messages. It does not launch a long-running simulator inside an HTTP request. Simulator runs generate new event identities; retries of an event must retain its original ID and body.
+
+See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the session setup, request flow, and history query.
