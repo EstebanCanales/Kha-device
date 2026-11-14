@@ -31,6 +31,7 @@ from monitoring.views import (
     healthz,
     readyz,
 )
+from monitoring.vital_signs import VitalSignsView
 
 router = SimpleRouter()
 router.register("sessions", SessionViewSet, basename="session")
@@ -46,6 +47,7 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     path('api/v1/telemetry/batches/', TelemetryBatchView.as_view(), name='telemetry-batches'),
     path('api/v1/schema/', SpectacularAPIView.as_view(), name='api-schema'),
+    path('api/v1/telemetry/vital-signs/', VitalSignsView.as_view(), name='vital-signs'),
     path('healthz/', healthz),
     path('readyz/', readyz),
 ]

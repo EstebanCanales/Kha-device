@@ -1,263 +1,106 @@
-AGENTS.md — Backend de monitoreo de astronautas
-1. Propósito y contexto
-Actúa como agente de desarrollo del backend de este proyecto. La tecnología principal es Django y este archivo está dirigido a Codex.
+# AGENTS.md — Astronaut Monitoring Backend
 
-El sistema recibirá telemetría de un arnés de monitoreo fisiológico y un dosímetro activo de radiación ionizante que llevará un astronauta. Los dominios requeridos son:
-- Sistema cardiovascular.
-- Sistema respiratorio.
-- Oxigenación sanguínea.
-- Temperatura.
-- Actividad física y contexto de gravedad alterada.
-- Radiación: tasa de dosis, dosis absorbida acumulada, historial individual y tiempo de exposición registrado.
-La etapa actual consiste en preparar un backend funcional para integrar sensores. No se han confirmado modelos de hardware, firmware, frecuencias de muestreo, interfaces de comunicación ni formatos reales de sus mensajes.
+## Purpose and context
 
-Trata esta etapa como un prototipo de adquisición y consulta de datos. No atribuyas al sistema validación clínica, certificación aeroespacial ni capacidad de diagnóstico.
-2. Misión actual de Codex
-2.1. Resultado esperado
-Implementa un flujo verificable de extremo a extremo: un simulador autenticado envía lecturas, el backend las valida y guarda, y un usuario autorizado consulta su historial.
+Act as the development agent for this Django backend. The system receives telemetry from a physiological monitoring harness and an active ionizing-radiation dosimeter worn by an astronaut. Required domains are cardiovascular, respiratory, blood oxygenation, temperature, physical activity, altered-gravity context, and radiation dose/exposure history.
 
-Prioridades, en este orden:
-1. Inspeccionar el repositorio y aprovechar su estructura existente.
-2. Configurar Django, dependencias, variables de entorno y base de datos.
-3. Modelar participantes, sesiones, dispositivos, sensores y lecturas.
-4. Definir e implementar un contrato versionado de ingesta.
-5. Proteger la recepción y consulta con autenticación y autorización.
-6. Soportar reenvíos, datos retrasados y desconexiones sin duplicar mediciones.
-7. Incorporar simulación, pruebas relevantes y documentación reproducible.
-2.2. Fuera de esta primera etapa
-No implementar frontend, firmware, diagnóstico, alertas médicas, inteligencia artificial, recomendaciones de tratamiento ni cálculos de riesgo radiológico. No añadir streaming, procesamiento de ECG, MQTT, colas o infraestructura distribuida sin un requisito concreto.
+This is an acquisition and query prototype. Hardware models, firmware, sampling rates, communication interfaces, and real message formats are not confirmed. Do not claim clinical validation, aerospace certification, or diagnostic capability.
 
-El backend debe poder ampliarse después, pero no necesita implementar por anticipado todas esas funciones.
-3. Forma de trabajar
-3.1. Inspección y autonomía
-- Lee el README, las instrucciones aplicables, los archivos de dependencias, la configuración, las migraciones y las pruebas antes de editar.
-- Revisa el estado de Git y conserva los cambios del usuario. No sobrescribas trabajo ajeno ni hagas operaciones destructivas.
-- Si ya existe una implementación, adáptala. Si el repositorio está vacío, crea la base descrita aquí.
-- Ejecuta las tareas reversibles necesarias para completar la misión; no te quedes únicamente en un plan.
-- Registra las decisiones técnicas provisionales y continúa con simulación cuando falte hardware. Pregunta solo si una decisión bloqueante no puede aislarse mediante un supuesto documentado.
-- No inventes fichas técnicas, puertos, credenciales, unidades de salida, comandos existentes ni resultados de pruebas.
-- No despliegues, publiques, hagas push ni modifiques servicios externos salvo solicitud explícita. Sigue la política de commits del repositorio; si no existe, deja los cambios preparados para revisión.
-3.2. Comunicación y código
-- Explica avances y resultados en español, de manera directa. Usa inglés para nombres de código, rutas y claves JSON.
-- Prefiere funciones pequeñas, nombres descriptivos y comentarios que expliquen decisiones.
-- Sigue las convenciones del repositorio. Evita refactorizaciones ajenas a la tarea y dependencias sin necesidad demostrable.
-- Mantén este archivo como instrucciones operativas. Coloca especificaciones extensas y decisiones detalladas en docs/.
-4. Base técnica y organización
-4.1. Decisiones iniciales
-Cuando el repositorio todavía no tenga decisiones equivalentes, utiliza:
-Componente	Base propuesta
-Backend	Python y Django, con versiones compatibles y mantenidas
-API	Django REST Framework
-Base de datos	PostgreSQL
-Transporte inicial	HTTP con JSON; HTTPS fuera del desarrollo local
-Administración	Django Admin para participantes, sesiones y dispositivos
-Contrato	API /api/v1/ y esquema OpenAPI
-Pruebas	Runner existente; por defecto, pruebas de Django y DRF
-Calidad	Herramientas existentes; Ruff si el proyecto nuevo necesita un linter
+## Mission
 
+Implement a verifiable end-to-end flow: an authenticated simulator sends readings, the backend validates and stores them, and an authorized user queries the history.
 
-Estas son decisiones iniciales de software, no características confirmadas del hardware. Respeta las herramientas ya adoptadas y documenta cualquier cambio necesario. Fija dependencias de forma reproducible y no actualices versiones mayores por conveniencia.
-4.2. Separación de responsabilidades
-Mantén un monolito modular. Si partes desde cero, organiza las responsabilidades en config/, participants/, devices/ y telemetry/; pueden agruparse si el tamaño inicial lo justifica.
-- Modelos: datos, relaciones, índices y restricciones de integridad.
-- Serializers: forma del contrato y validación de entradas.
-- Servicios de ingesta: autorización contextual, idempotencia y persistencia transaccional.
-- Vistas: coordinación HTTP y respuestas; evita lógica de dominio extensa.
-- Consultas: filtros, permisos, paginación y orden estable.
-- Simulador: cliente del mismo endpoint que utilizará la integración real.
-La lógica de ingesta no debe depender del transporte físico. Un adaptador futuro podrá traducir mensajes de un gateway al mismo contrato sin duplicar las reglas del dominio.
-5. Datos que debe contemplar el sistema
-5.1. Catálogo inicial de métricas
-Las métricas siguientes son propuestas de modelado. Habilita cada una en un dispositivo real únicamente cuando su sensor y contrato estén confirmados. No presentes una señal como disponible solo porque el backend admite almacenarla.
-Dominio	Métricas o datos previstos	Unidad o criterio
-Cardiovascular	Frecuencia cardíaca: heart_rate	bpm
-Respiratorio	Frecuencia respiratoria: respiratory_rate	breaths/min
-Oxigenación	Saturación periférica estimada: spo2	%; no confundir con concentración de oxígeno ambiental
-Temperatura	skin_temperature, core_temperature o ambient_temperature, según procedencia	degC; conservar sitio y método
-Actividad	Aceleración por eje y, si existe giroscopio, velocidad angular	m/s2 y rad/s; indicar ejes y marco de referencia
-Gravedad alterada	Contexto de sesión: terrestre, microgravedad, gravedad parcial, hipergravedad o desconocido	Metadatos declarados, con procedencia
-Radiación	Tasa de dosis	Magnitud y unidad exactas que reporte el dosímetro
-Radiación	Dosis absorbida acumulada, si realmente se mide	Gy o submúltiplos identificados
-Radiación	Tiempo de exposición registrado	s, con criterio de inicio, pausa y reinicio
-Historial	Lecturas y períodos de exposición por participante y sesión	Ordenados por tiempo de medición
+Priorities:
+1. Inspect and reuse the repository structure.
+2. Configure Django, dependencies, environment variables, and the database.
+3. Model participants, monitoring sessions, devices, sensors, packets, and measurements.
+4. Implement a versioned ingestion contract at `/api/v1/`.
+5. Protect ingestion and queries with authentication and authorization.
+6. Support retries, delayed data, and disconnections without duplicate measurements.
+7. Add simulation, tests, and reproducible documentation.
 
+Do not implement frontend, firmware, diagnostics, medical alerts, AI, treatment recommendations, radiological-risk calculations, streaming, ECG processing, MQTT, queues, or distributed infrastructure without a concrete requirement.
 
-5.2. Límites de interpretación
-- No asumas ECG, presión arterial, temperatura central o volumen respiratorio si no hay hardware y procesamiento que los produzcan.
-- Distingue una medición directa de una estimación. Guarda método y versión cuando un valor sea calculado.
-- No clasifiques automáticamente el régimen de gravedad a partir de una lectura aislada del acelerómetro. Conserva los datos inerciales y el contexto declarado por separado.
-- No conviertas ausencia de datos, sensor desconectado o mala señal en un valor cero.
-5.3. Reglas específicas de dosimetría
-- Guarda la magnitud dosimétrica, no solo un campo genérico llamado radiation. Distingue dosis absorbida, dosis equivalente y magnitudes operacionales como equivalente de dosis personal Hp(d) cuando corresponda al instrumento.
-- La dosis absorbida se expresa en gray (Gy); otras magnitudes, como dosis equivalente y equivalente de dosis personal, usan sievert (Sv). No intercambies ambas unidades ni deduzcas una a partir de la otra sin un modelo validado y la información requerida.
-- Si el sensor reporta µSv/h, no lo etiquetes como tasa de dosis absorbida. Si reporta conteos, no los transformes en dosis sin calibración documentada.
-- Conserva la unidad original y permite normalizar únicamente conversiones explícitas dentro de una misma magnitud. Documenta los códigos de unidades aceptados, incluidos prefijos como uGy o uSv.
-- Registra si la dosis es un contador acumulado del dispositivo o un incremento de un intervalo. No sumes entre sí las sucesivas lecturas de un contador acumulativo.
-- Identifica la época del contador y los reinicios. Un reinicio del dispositivo o una nueva asignación a un participante no puede mezclarse silenciosamente con el historial anterior.
-- En esta etapa, guarda y consulta las lecturas originales. No integres tasas para producir dosis ni fabriques totales personales a partir de contadores cuya referencia sea desconocida.
-- Conserva el tiempo registrado por el instrumento o el protocolo de exposición. No lo sustituyas por el tiempo transcurrido desde la primera petición HTTP.
-- Los vacíos de transmisión deben permanecer identificables; no significan ausencia de exposición.
-6. Modelo de dominio y trazabilidad
-Implementa las entidades mínimas equivalentes a las siguientes; adapta los nombres a las convenciones existentes:
-Entidad	Responsabilidad
-Participant	Identificador seudónimo del astronauta o participante; sin datos personales innecesarios
-MonitoringSession	Participante, inicio, cierre y contexto del monitoreo
-Device	Arnés, dosímetro o gateway registrado; estado, identificador y versión de firmware cuando se conozca
-Sensor	Canal o sensor de un dispositivo, métricas admitidas y perfil de configuración/calibración
-SessionDevice	Asociación temporal autorizada entre sesión y dispositivo
-TelemetryPacket	Identificador del evento, versión de esquema, dispositivo, sesión, tiempo y procedencia
-Measurement	Sensor, métrica, valor, unidad, calidad y referencia al paquete
+## Working rules
 
+- Read the README, applicable instructions, dependency files, configuration, migrations, and tests before editing.
+- Inspect Git status and preserve user changes. Do not overwrite unrelated work or use destructive operations.
+- Adapt existing implementations; create the described foundation only when the repository is empty.
+- Record provisional decisions and continue with simulation when hardware is unavailable.
+- Do not invent hardware specifications, ports, credentials, units, commands, or test results.
+- Do not deploy, publish, push, or modify external services unless explicitly requested.
+- Explain progress and results in English. Keep code names, paths, commands, endpoints, and JSON keys unchanged.
+- Prefer small functions, descriptive names, and comments explaining decisions. Put detailed specifications and decisions in `docs/`.
 
-Reglas de modelado:
-- Usa identificadores estables, claves foráneas y restricciones en base de datos; no dependas solo del serializer.
-- Resuelve el participante mediante una sesión autorizada. No aceptes un participant_id arbitrario enviado por el dispositivo como prueba de identidad.
-- Comprueba que el sensor pertenece al dispositivo y que este estaba asignado a la sesión en el momento de la medición.
-- Conserva la asociación histórica aunque el dispositivo se reasigne. No vincules datos antiguos usando exclusivamente su propietario actual.
-- Guarda observed_at como tiempo de medición y received_at como tiempo generado por el servidor. Usa fechas con zona horaria y normaliza a UTC.
-- Conserva la versión del perfil de sensor/calibración usada, o marca que es desconocida; no alteres el significado histórico al editar una configuración.
-- Distingue datos simulated y hardware. La procedencia debe coincidir con el perfil registrado del emisor; un payload no puede convertir un simulador en hardware real.
-- Protege la precisión numérica de dosis y contadores. Elige tipos y resolución documentados; no redondees silenciosamente.
-- Usa columnas consultables para identidad, métrica, tiempo y valor. Reserva JSON para metadatos acotados o el payload original autorizado, no como sustituto de todo el modelo.
-- Indexa las consultas por sesión, sensor/métrica y tiempo. Las lecturas aceptadas serán de solo lectura en API y Admin; no habilites edición o borrado genérico.
-7. Contrato inicial de ingesta
-7.1. Forma del mensaje
-Define POST /api/v1/telemetry/batches/ con una lista acotada de paquetes. Cada paquete identifica el dispositivo, la sesión, el instante de medición y sus lecturas.
+## Technical baseline
 
-Ejemplo exclusivamente sintético; no especifica valores clínicos de referencia ni capacidades del hardware:
-{
-  "schema_version": 1,
-  "packets": [
-    {
-      "packet_id": "27980ce0-91a0-4b41-9ed8-89f0a34cc4c4",
-      "device_id": "harness-sim-001",
-      "session_id": "session-demo-001",
-      "observed_at": "2026-11-14T16:00:00Z",
-      "source": "simulated",
-      "readings": [
-        {
-          "sensor_id": "hr-sim-001",
-          "metric": "heart_rate",
-          "value": "78.0",
-          "unit": "bpm",
-          "quality": "valid"
-        }
-      ]
-    }
-  ]
-}
-Documenta el tipo y formato de cada identificador; los identificadores legibles del ejemplo deben existir en los datos de demostración. En este contrato, los valores escalares se transmiten como cadenas decimales finitas para conservar precisión. Define explícitamente cómo representar vectores y lecturas ausentes.
+Use Python/Django, Django REST Framework, PostgreSQL, HTTP with JSON for local development, Django Admin, `/api/v1/`, OpenAPI, the existing test runner, and Ruff only when needed by a new project. Pin dependencies reproducibly and do not upgrade major versions for convenience.
 
-Todas las lecturas de un paquete comparten observed_at. Si se capturaron en instantes distintos, envíalas en paquetes distintos. No supongas sincronización entre sensores por haber llegado en el mismo lote.
-7.2. Validación y calidad
-- Valida esquema, campos obligatorios, tipos, tamaño, versión, identificadores, permisos y pertenencia del sensor.
-- Acepta solo métricas y unidades habilitadas en el perfil del sensor. Rechaza versiones o campos desconocidos fuera de una extensión de metadatos documentada.
-- Rechaza NaN, infinito y datos estructuralmente inválidos. Define límites técnicos de longitud, precisión y cantidad.
-- Separa los límites matemáticos o instrumentales de los umbrales médicos. No rechaces una lectura solo por estar fuera de un supuesto rango saludable.
-- Define estados de calidad, por ejemplo valid, unreliable y missing. Permite null únicamente para una ausencia explícita y documentada; un valor ausente no es cero.
-- Acepta datos fuera de orden dentro de una política documentada. Las tolerancias de reloj y antigüedad serán configurables y no inventarán tiempos de medición.
-- Un paquete sin tiempo confiable requiere una política explícita; nunca sustituyas silenciosamente observed_at por received_at.
-7.3. Idempotencia, transacciones y reintentos
-- El emisor genera un packet_id estable antes del primer envío y lo conserva en los reintentos.
-- Impón unicidad en base de datos sobre (device_id, packet_id) y controla duplicados también dentro del mismo lote.
-- Un reenvío idéntico devuelve confirmación de duplicado, sin insertar nuevas lecturas. Reutilizar la misma identidad con contenido diferente devuelve conflicto.
-- Compara contenido mediante una representación canónica documentada; excluye campos generados por el servidor. Incluye sesión, tiempo, lecturas, unidades y procedencia.
-- Implementa la protección bajo concurrencia; una consulta previa de existencia no es suficiente.
-- Para el MVP, cada lote es atómico: si un paquete es inválido o conflictivo, no se inserta ninguno de los paquetes nuevos. Los duplicados idénticos no son un error.
-- Usa transacciones breves. No confirmes éxito antes de que los datos se hayan persistido.
-- Devuelve estado por paquete y totales de insertados/duplicados. Documenta 400, errores de autenticación/autorización, 409, 413, 429 y fallos temporales según la implementación.
-- El simulador debe poder reenviar el mismo lote y reproducir retrasos. Documenta reintentos con espera creciente para fallos temporales, sin crear identidades nuevas.
-8. API de consulta y operación
-8.1. Endpoints mínimos
-Endpoint propuesto	Función
-POST /api/v1/telemetry/batches/	Ingesta autenticada por dispositivo o gateway autorizado
-GET /api/v1/sessions/	Sesiones visibles para el usuario
-GET /api/v1/sessions/{id}/measurements/	Historial paginado con filtros por métrica, sensor y fechas
-GET /api/v1/sessions/{id}/latest/	Última lectura por sensor y métrica, según observed_at
-GET /healthz/	Estado básico del proceso, sin información sensible
-GET /readyz/	Disponibilidad de las dependencias mínimas, con respuesta limitada
+Keep a modular monolith. If starting from scratch, use `config/`, `participants/`, `devices/`, and `telemetry/`. Keep models, serializers, ingestion services, views, queries, and the simulator separated. Ingestion logic must not depend on physical transport.
 
+## Domain and data rules
 
-El historial individual puede consultarse mediante las sesiones autorizadas del participante, incluyendo el filtro correspondiente. No necesitas un servicio separado para reconstruirlo.
-8.2. Reglas de consulta
-- Aplica autorización tanto a detalles como a listados y filtros. Estar autenticado no concede acceso a todos los participantes.
-- Pagina, limita rangos de consulta y usa orden estable por tiempo e identificador.
-- Devuelve unidad, calidad, procedencia y tiempos junto con el valor.
-- La lectura más reciente no es necesariamente una lectura actual: muestra su tiempo y no la declares vigente por haber sido recibida recientemente.
-- Separa por sensor y magnitud; no mezcles temperatura cutánea con central ni contadores dosimétricos con referencias diferentes.
-- Filtra por defecto datos reales y simulados de forma explícita; no los combines silenciosamente en respuestas o agregaciones.
-9. Seguridad y configuración
-9.1. Identidad y acceso
-- Distingue credenciales de dispositivos de cuentas humanas. Los emisores solo pueden enviar por los dispositivos y sesiones asignados.
-- No utilices un token global compartido por todos los dispositivos. Las credenciales deben poder revocarse y rotarse individualmente.
-- Usa mecanismos mantenidos y almacena credenciales de forma segura; no diseñes criptografía propia ni guardes secretos de emisor recuperables si basta un verificador.
-- Implementa permisos mínimos: administración de configuración, consulta autorizada e ingesta. Una credencial de ingesta no habilita lectura del historial.
-- Conserva CSRF para sesiones de navegador. No desactives protecciones globales para resolver problemas de autenticación.
-9.2. Configuración y datos sensibles
-- Usa variables de entorno para secretos y configuración. Entrega .env.example sin valores reales y excluye .env del control de versiones.
-- Separa configuración local y de despliegue. En un despliegue, exige DEBUG=False, hosts permitidos y HTTPS configurado correctamente.
-- Limita el tamaño de cuerpos, paquetes por lote, lecturas por paquete y frecuencia de peticiones.
-- No registres tokens, secretos, nombres ni payloads completos con datos fisiológicos en los logs. Registra identificadores técnicos, resultado, duración y conteos suficientes para depurar.
-- Usa solo datos sintéticos en fixtures, pruebas y demostraciones.
-- Documenta la retención como decisión pendiente; no implementes borrado automático de historiales sin una política acordada.
-10. Simulación y pruebas
-10.1. Simulador reproducible
-Proporciona un comando o script documentado que cree o utilice participantes, sesiones y dispositivos de demostración, y envíe mensajes por HTTP con autenticación.
+Support proposed metrics such as `heart_rate`, `respiratory_rate`, `spo2`, `skin_temperature`, `core_temperature`, `ambient_temperature`, acceleration, angular velocity, dose rate, accumulated absorbed dose, and recorded exposure time. These are modeling options, not confirmed hardware capabilities.
 
-Debe permitir controlar semilla, cantidad e intervalo de envío, y generar ejemplos de los dominios del proyecto mediante perfiles de sensor expresamente simulados. Incluye escenarios de duplicados, retrasos, falta de señal y reinicio de contador dosimétrico.
+Do not assume ECG, blood pressure, core temperature, respiratory volume, or automatically inferred gravity. Distinguish direct measurements from estimates and preserve method/version. Missing data, disconnected sensors, and poor signals must never become zero.
 
-No presentes los perfiles simulados como compatibilidad verificada con instrumentos reales.
-10.2. Pruebas obligatorias de comportamiento
-- Un lote válido se persiste y puede consultarse con los permisos correctos.
-- Credenciales ausentes, inválidas o revocadas no permiten ingesta.
-- Un dispositivo no puede enviar por otro ni atribuir datos a una sesión ajena.
-- Un usuario no puede consultar datos ajenos cambiando IDs, filtros o rutas.
-- Un lote inválido revierte todas sus inserciones nuevas.
-- Reintentos idénticos, incluidos los concurrentes, no duplican paquetes ni lecturas.
-- Una identidad reutilizada con contenido distinto produce conflicto.
-- Unidades incompatibles, versiones desconocidas y valores no finitos fallan de forma controlada.
-- Datos retrasados conservan su sesión y tiempo originales; no reemplazan indebidamente la última lectura.
-- La ausencia de señal no se convierte en cero y la simulación permanece identificada.
-- Contadores acumulados y reiniciados se almacenan sin sumas o mezclas implícitas.
-Comprueba restricciones y concurrencia con PostgreSQL. Si solo puedes probar con otra base de datos o falta infraestructura, identifica esa limitación; no afirmes equivalencia ni verificaciones que no ejecutaste.
-10.3. Comprobaciones del proyecto
-Usa los comandos reales del repositorio. En un proyecto Django nuevo, documenta y ejecuta, cuando el entorno lo permita:
+For dosimetry, preserve the exact quantity and original unit. Distinguish absorbed dose (Gy), equivalent dose/personal dose equivalent (Sv), dose rate, cumulative counters, interval increments, counter epochs, and resets. Do not convert counts or integrate rates without documented calibration and a validated model. Preserve instrument/protocol time and identify transmission gaps.
+
+Implement `Participant`, `MonitoringSession`, `Device`, `Sensor`, `SessionDevice`, `TelemetryPacket`, and `Measurement`, with stable identifiers, foreign keys, indexes, and database constraints. Resolve participants through authorized sessions. Verify sensor ownership and time-bound session assignment. Store `observed_at` and server-generated `received_at` as UTC-aware timestamps. Preserve historical profile/calibration versions and distinguish `simulated` from hardware provenance.
+
+Accepted readings are read-only in API and Admin. Use queryable columns for identity, metric, time, and value; use JSON only for bounded metadata or an authorized original payload.
+
+## Ingestion contract
+
+Implement `POST /api/v1/telemetry/batches/`. Each bounded batch contains packets with `packet_id`, `device_id`, `session_id`, `observed_at`, `source`, and readings containing `sensor_id`, `metric`, `value`, `unit`, and `quality`.
+
+Use finite decimal strings for scalar values to preserve precision. Document identifier formats, vector representation, missing readings, technical limits, accepted units, and quality states such as `valid`, `unreliable`, and `missing`. All readings in one packet share `observed_at`; use separate packets for different capture times.
+
+Validate schema, required fields, types, size, version, identifiers, permissions, sensor ownership, enabled metrics/units, finite values, and structural limits. Do not apply medical thresholds. Never silently replace `observed_at` with `received_at`.
+
+Enforce uniqueness on `(device_id, packet_id)` in the database. Identical retries return duplicate confirmation without new readings; reused identities with different canonical content return `409 Conflict`. Batches are atomic for new packets, including under concurrency. Return per-packet status and inserted/duplicate totals. Document `400`, authentication/authorization errors, `409`, `413`, `429`, and temporary failures.
+
+## Query API
+
+Implement:
+
+- `GET /api/v1/sessions/`
+- `GET /api/v1/sessions/{id}/measurements/`
+- `GET /api/v1/sessions/{id}/latest/`
+- `GET /healthz/`
+- `GET /readyz/`
+
+Authorize every list, detail, route, and filter. Paginate, limit query ranges, and use stable ordering by time and identifier. Return value, unit, quality, provenance, and timestamps. Separate real and simulated data explicitly and do not call a recently received reading “current” without showing `observed_at`.
+
+## Security and configuration
+
+Distinguish device credentials from human accounts. Credentials must be individually revocable and rotatable; there must be no global shared device token. Use maintained authentication mechanisms, least privilege, secure secret storage, and CSRF protection for browser sessions.
+
+Use environment variables, provide `.env.example` without real values, exclude `.env`, require `DEBUG=False`, allowed hosts, and correctly configured HTTPS for deployment. Limit body size, packets, readings, and request frequency. Do not log tokens, secrets, names, or complete physiological payloads. Use synthetic data only in fixtures, tests, and demonstrations. Treat retention as a pending decision.
+
+## Simulation and tests
+
+Provide a documented authenticated HTTP simulator that creates or uses demonstration participants, sessions, devices, and explicitly simulated sensor profiles. It must control seed, count, interval, duplicates, delays, signal loss, and dosimetry-counter resets. Do not present simulated profiles as verified real-instrument compatibility.
+
+Test valid persistence/querying, missing/invalid/revoked credentials, device/session authorization, query isolation, atomic rollback, concurrent idempotent retries, content conflicts, incompatible units, unknown versions, non-finite values, delayed readings, missing signals, simulation provenance, and cumulative/reset counters. Verify database constraints and concurrency with PostgreSQL; state any limitation if another database is used.
+
+Run, when available:
+
+```bash
 python manage.py check
 python manage.py makemigrations --check --dry-run
 python manage.py migrate
 python manage.py test
-Aplica migraciones únicamente sobre la base local o de pruebas destinada a esta tarea. Ejecuta también el linter configurado y valida la coherencia del esquema OpenAPI y sus ejemplos. No cambies las pruebas para esconder fallos del comportamiento requerido.
-11. Documentación y definición de terminado
-11.1. Entregables de esta misión
-- Proyecto Django arrancable, dependencias reproducibles y configuración de ejemplo.
-- Modelos, migraciones, índices y restricciones de integridad.
-- Ingesta y consultas mínimas, con autenticación y permisos.
-- Django Admin para configuración; telemetría de solo lectura.
-- Esquema OpenAPI y ejemplos consistentes de peticiones y respuestas.
-- Simulador y pruebas del flujo completo.
-- README.md con instalación, configuración, migraciones, ejecución y pruebas.
-- docs/telemetry-contract.md con métricas, unidades, tiempos, calidad, idempotencia y errores.
-- docs/decisions.md con supuestos, decisiones provisionales y pendientes de hardware.
-11.2. Criterio de aceptación
-La misión está terminada cuando, siguiendo únicamente el README y con las dependencias disponibles, se puede levantar el backend, registrar una sesión de demostración, enviar un lote autenticado, consultarlo, reenviarlo sin duplicación y comprobar el rechazo de un emisor no autorizado.
+```
 
-La demostración debe usar el endpoint HTTP real, no insertar lecturas directamente en la base de datos para aparentar integración.
+Also run the configured linter and validate the OpenAPI schema and examples. Do not change tests to hide required behavior failures.
 
-Al terminar, informa brevemente qué implementaste, cómo ejecutarlo, qué comprobaste, qué falló o no pudiste comprobar y qué sigue pendiente. No declares integración con hardware si solo se ha validado el simulador.
-12. Información pendiente para conectar hardware real
-Avanza con la infraestructura y la simulación mientras estos datos no estén disponibles:
-1. Marca, modelo, ficha técnica y ubicación corporal de cada sensor.
-2. Métricas y magnitudes reales del dosímetro, calibración, unidades y referencia de sus contadores.
-3. Ejemplos reales de payload, protocolo de transporte y existencia de un gateway.
-4. Frecuencias de muestreo, volumen esperado y si se enviarán resúmenes o formas de onda.
-5. Sincronización de reloj, almacenamiento durante desconexiones y política de reenvíos.
-6. Procedimiento de asignación de dispositivos, sesiones y reinicio de contadores.
-7. Contexto de gravedad y fuente que lo determina.
-8. Entorno de despliegue, usuarios autorizados, retención y necesidades futuras de alertas validadas.
-No conviertas estas incógnitas en características confirmadas. Cuando llegue la especificación real, adapta y prueba el perfil o adaptador correspondiente y actualiza el contrato.
-13. Referencias para implementación y aprendizaje
-- Codex: instrucciones con AGENTS.md.
-- Django: transacciones. Consulta la versión de documentación correspondiente al proyecto.
-- Django REST Framework: permisos.
-- IAEA: preguntas sobre protección radiológica; magnitudes de dosis, pregunta 23.
-Estas referencias respaldan aspectos técnicos del contrato. No definen requisitos clínicos ni certifican el sistema para uso espacial.
+## Deliverables and acceptance
+
+Provide a runnable Django project, reproducible dependencies, example configuration, models, migrations, indexes, constraints, authenticated ingestion and query APIs, Django Admin configuration, read-only telemetry, OpenAPI schema, simulator, end-to-end tests, `README.md`, `docs/telemetry-contract.md`, and `docs/decisions.md`.
+
+The mission is complete when the README alone allows an evaluator to start the backend, register a demonstration session, send an authenticated batch through the real HTTP endpoint, query it, resend it without duplication, and verify rejection of an unauthorized sender. Report what was implemented, how it runs, what was checked, limitations, failures, and pending work. Do not claim hardware integration when only simulation was validated.
+
+Pending hardware information includes sensor make/model/location, dosimeter quantities/calibration/units/counter references, real payloads and transport, sampling rates and volume, clock/disconnection/retry behavior, assignment and reset procedures, gravity context, deployment, authorized users, retention, and validated alert requirements. Treat these as unknowns until specified.
+
+References: Codex `AGENTS.md` instructions, the project-version Django transaction documentation, Django REST Framework permissions, and IAEA radiation-protection question 23. These references do not define clinical requirements or certify space use.
