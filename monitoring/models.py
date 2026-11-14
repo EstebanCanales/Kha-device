@@ -28,6 +28,12 @@ class Metric(models.TextChoices):
     ABSORBED_DOSE_CUMULATIVE = "absorbed_dose_cumulative", "Cumulative absorbed dose"
     EQUIVALENT_DOSE_CUMULATIVE = "equivalent_dose_cumulative", "Cumulative equivalent dose"
     PERSONAL_DOSE_EQUIVALENT_CUMULATIVE = "personal_dose_equivalent_cumulative", "Cumulative personal dose equivalent"
+    MEASUREMENT_INTERVAL = "measurement_interval", "Interval between readings"
+    MISSION_ELAPSED_TIME = "mission_elapsed_time", "Time since mission start"
+    INTERNAL_TEMPERATURE = "internal_temperature", "Internal circuit temperature"
+    DIS_CHAMBER_STATUS = "dis_chamber_status", "DIS chamber status"
+    STORAGE_STATUS = "storage_status", "Storage status"
+    DOSE_RATE_INCREASE = "dose_rate_increase", "Dose rate increased since previous valid sample"
     EXPOSURE_DURATION = "exposure_duration", "Recorded exposure duration"
 
 
@@ -41,13 +47,19 @@ METRIC_UNITS = {
     Metric.ACCELERATION_X: {"m/s2"},
     Metric.ACCELERATION_Y: {"m/s2"},
     Metric.ACCELERATION_Z: {"m/s2"},
-    Metric.ABSORBED_DOSE_RATE: {"Gy/h", "mGy/h", "uGy/h"},
+    Metric.ABSORBED_DOSE_RATE: {"Gy/h", "mGy/h", "uGy/h", "uGy/min"},
     Metric.EQUIVALENT_DOSE_RATE: {"Sv/h", "mSv/h", "uSv/h"},
     Metric.PERSONAL_DOSE_EQUIVALENT_RATE: {"Sv/h", "mSv/h", "uSv/h"},
     Metric.ABSORBED_DOSE_CUMULATIVE: {"Gy", "mGy", "uGy"},
     Metric.EQUIVALENT_DOSE_CUMULATIVE: {"Sv", "mSv", "uSv"},
     Metric.PERSONAL_DOSE_EQUIVALENT_CUMULATIVE: {"Sv", "mSv", "uSv"},
     Metric.EXPOSURE_DURATION: {"s"},
+    Metric.MEASUREMENT_INTERVAL: {"s"},
+    Metric.MISSION_ELAPSED_TIME: {"s"},
+    Metric.INTERNAL_TEMPERATURE: {"degC"},
+    Metric.DIS_CHAMBER_STATUS: {"code"},
+    Metric.STORAGE_STATUS: {"code"},
+    Metric.DOSE_RATE_INCREASE: {"1"},
 }
 CUMULATIVE_METRICS = {
     Metric.ABSORBED_DOSE_CUMULATIVE,
@@ -275,6 +287,13 @@ class Measurement(UUIDPrimaryKeyModel):
             errors["sensor"] = "Sensor must belong to the packet device."
         if self.sensor_id and not SensorCapability.objects.filter(sensor_id=self.sensor_id, metric=self.metric, unit=self.unit, enabled=True).exists():
             errors["metric"] = "Metric and unit are not enabled for this sensor."
+        if self.value is not None:
+            if self.metric in {Metric.DIS_CHAMBER_STATUS, Metric.STORAGE_STATUS} and self.value not in {0, 1, 2}:
+                errors["value"] = "Status must be 0 (unknown), 1 (ok), or 2 (fault)."
+            if self.metric == Metric.DOSE_RATE_INCREASE and self.value not in {0, 1}:
+                errors["value"] = "Increase flag must be 0 or 1."
+            if self.metric in {Metric.EXPOSURE_DURATION, Metric.MEASUREMENT_INTERVAL, Metric.MISSION_ELAPSED_TIME} and self.value < 0:
+                errors["value"] = "Elapsed time cannot be negative."
         if self.metric in CUMULATIVE_METRICS and not self.counter_epoch_id:
             errors["counter_epoch"] = "Cumulative dose requires a counter epoch."
         if self.counter_epoch_id and self.sensor_id and self.packet_id:

@@ -11,3 +11,11 @@
 - El contrato v1 conserva magnitudes y unidades originales. La procedencia y la época de contador evitan mezclar datos de simulación o referencias de dosis distintas.
 
 Pendiente antes de integrar equipos reales: modelos y fichas técnicas, magnitudes y calibración del dosímetro, payload y protocolo, frecuencia de muestreo, reloj y almacenamiento durante desconexiones, procedimiento de reasignación y reinicio, fuente del contexto de gravedad, retención, autorización operativa y entorno de despliegue.
+
+## Dedicated dosimeter prototype
+
+- Reuse the batch API, device credentials, session authorization, read-only history, and counter epochs; no additional ingestion endpoint is needed.
+- Use a separate `dosimeter-detail-sim-001` profile so existing demo sensor configuration is preserved.
+- Store status as explicitly documented application codes and elapsed times as decimal seconds. DIS state is aggregate until the chamber inventory and protocol are known.
+- Use a durable SQLite desktop journal as a storage adapter stand-in. It is not FRAM hardware support. Preserve records and identities through acknowledgment and replay; retention remains pending.
+- Synthetic cumulative increments are independent fixtures, not inferred from rates. A rate-increase flag compares adjacent valid captures only and has no radiological-risk meaning.

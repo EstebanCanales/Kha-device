@@ -102,3 +102,7 @@ The endpoint resolves the session from the registered device assignment at `meas
 The simulator already performs HTTP sending when `--url` is provided; the endpoint receives and stores those messages. It does not launch a long-running simulator inside an HTTP request. Simulator runs generate new event identities; retries of an event must retain its original ID and body.
 
 See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the session setup, request flow, and history query.
+
+## Dedicated dosimeter
+
+The new [dosimeter simulator and run guide](docs/dosimeter.md) records absorbed dose rate, cumulative absorbed dose with reset epochs, exposure history and increases, reading/mission timing, internal temperature, and synthetic DIS/storage status. It sends through the existing authenticated batch endpoint and keeps a durable local journal for offline replay. SQLite stands in for device storage; physical FRAM and DIS integration require hardware specifications.

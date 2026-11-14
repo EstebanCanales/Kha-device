@@ -62,3 +62,7 @@ Respuesta con inserciones (`201`) o solo duplicados (`200`):
 `GET /api/v1/sessions/` lista solo sesiones autorizadas para la cuenta humana; el personal administrativo puede ver todas. `GET /api/v1/sessions/{uuid}/measurements/` devuelve historial paginado (100 filas por defecto, máximo 500 por página) en orden estable de `observed_at` e ID. `GET /api/v1/sessions/{uuid}/latest/` devuelve la última lectura por sensor, métrica, unidad y época, según `observed_at`; incluye su tiempo y no declara que siga vigente.
 
 Ambas consultas de lecturas requieren `source=hardware` o `source=simulated`. Admiten `metric`, `sensor` (identificador legible), `observed_from` y `observed_to` con zona horaria. Si se aportan ambos tiempos, el intervalo máximo es de 31 días. La respuesta incluye valor, unidad, calidad, procedencia, `observed_at`, `received_at` y versión de perfil. Las lecturas aceptadas no tienen endpoints genéricos de edición ni borrado.
+
+## Dosimeter extension
+
+The synthetic `dosimeter-demo.v1` profile adds `measurement_interval` and `mission_elapsed_time` (`s`), `internal_temperature` (`degC`), `dis_chamber_status` and `storage_status` (`code`: 0 unknown, 1 ok, 2 fault), and `dose_rate_increase` (`1`: 0 false, 1 true). Missing values remain null. Elapsed timing values cannot be negative. Absorbed dose rate also accepts `uGy/min`; no automatic conversion occurs. See [dosimeter guide](dosimeter.md) for exact meanings, configuration, replay, and hardware limitations. Batch schema version remains 1; the sensor profile records the extension version.
