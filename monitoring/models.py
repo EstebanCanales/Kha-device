@@ -14,6 +14,7 @@ from django.db.models import F, Q
 
 class Metric(models.TextChoices):
     HEART_RATE = "heart_rate", "Heart rate"
+    PULSE_RATE = "pulse_rate", "Pulse rate"
     ECG = "ecg", "ECG signal"
     RESPIRATORY_RATE = "respiratory_rate", "Respiratory rate"
     SPO2 = "spo2", "Peripheral oxygen saturation estimate"
@@ -32,6 +33,7 @@ class Metric(models.TextChoices):
 
 METRIC_UNITS = {
     Metric.HEART_RATE: {"bpm"},
+    Metric.PULSE_RATE: {"bpm"},
     Metric.ECG: {"uV", "mV"},
     Metric.RESPIRATORY_RATE: {"breaths/min"},
     Metric.SPO2: {"%"},

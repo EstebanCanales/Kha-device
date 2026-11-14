@@ -33,13 +33,17 @@ class Command(BaseCommand):
             if reader is None:
                 raise CommandError("Reader user does not exist or is inactive.")
         now = timezone.now().replace(microsecond=0)
-        participant, _ = Participant.objects.get_or_create(pseudonym="synthetic-demo-001")
-        session, _ = MonitoringSession.objects.get_or_create(
-            identifier="session-demo-001",
-            defaults={"participant": participant, "started_at": now - timedelta(days=2), "gravity_context": "unknown"},
-        )
-        if session.participant_id != participant.pk:
-            raise CommandError("Demo session already belongs to another participant.")
+        session = MonitoringSession.objects.filter(identifier="session-demo-001").first()
+        if session is None:
+            participant, _ = Participant.objects.get_or_create(pseudonym="synthetic-demo-001")
+            session = MonitoringSession.objects.create(
+                identifier="session-demo-001", participant=participant,
+                started_at=now - timedelta(days=2), gravity_context="unknown",
+            )
+        elif session.participant.pseudonym != "synthetic-demo-001":
+            self.stderr.write(
+                f"Using existing demo session for participant {session.participant.pseudonym}; participant unchanged."
+            )
         if reader:
             session.authorized_users.add(reader)
 

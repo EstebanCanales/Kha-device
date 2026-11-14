@@ -78,3 +78,27 @@ uv run python manage.py test
 ```
 
 The local smoke test used SQLite; PostgreSQL constraints and concurrent retries still need verification on a running PostgreSQL server. See [telemetry contract](docs/telemetry-contract.md), [model notes](docs/models.md), and [decisions](docs/decisions.md).
+
+## vital_signs simulator endpoint
+
+`POST /api/v1/telemetry/vital-signs/` accepts the existing `demo.v1` events from `monitoring/sensors/vital_signs.py`. It stores five separate measurements per event: heart rate, pulse rate, SpO₂, respiratory rate, and **skin** temperature. This is a synthetic adapter, not a verified ADI watch protocol or Wavetool importer. Raw signals and activity outputs described for the watch are not emitted by this simulator.
+
+Create a session (or use `seed_demo --reader YOUR_USERNAME`), then configure its simulated watch:
+
+```bash
+uv run python manage.py migrate
+uv run python manage.py setup_vital_signs session-demo-001
+uv run python manage.py provision_device_token studywatch-sim-001
+```
+
+Set `TELEMETRY_AUTHORIZATION` to `Device CREDENTIAL_UUID:SECRET` using the credential printed once by the command. Start Django with `uv run python manage.py runserver`, then send:
+
+```bash
+uv run python monitoring/sensors/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
+```
+
+The endpoint resolves the session from the registered device assignment at `measured_at`. The random run ID inside `event_id` is not a monitoring-session identifier. HTTP 201 means stored, 200 means an identical retry, and 409 means the same event identity was reused with different readings. `signal-loss` stores nulls; `invalid` deliberately produces rejected events. A credential cannot send for another device or a hardware profile. Read results through the existing session history endpoint with `source=simulated`.
+
+The simulator already performs HTTP sending when `--url` is provided; the endpoint receives and stores those messages. It does not launch a long-running simulator inside an HTTP request. Simulator runs generate new event identities; retries of an event must retain its original ID and body.
+
+See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the session setup, request flow, and history query.
