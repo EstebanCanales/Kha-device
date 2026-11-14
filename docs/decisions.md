@@ -11,3 +11,7 @@
 - El contrato v1 conserva magnitudes y unidades originales. La procedencia y la época de contador evitan mezclar datos de simulación o referencias de dosis distintas.
 
 Pendiente antes de integrar equipos reales: modelos y fichas técnicas, magnitudes y calibración del dosímetro, payload y protocolo, frecuencia de muestreo, reloj y almacenamiento durante desconexiones, procedimiento de reasignación y reinicio, fuente del contexto de gravedad, retención, autorización operativa y entorno de despliegue.
+
+## Temperature integration
+
+The vital-signs generator uses `MAX30205Simulator.sample()` from `monitoring/body_temperature.py` for its existing `skin_temperature_c` channel. The synthetic input remains approximately 33.4 C; the returned quantized value is preserved without additional rounding. This is a provisional simulated skin-temperature use, not evidence of sensor placement, core-temperature measurement, or verified MAX30205 hardware compatibility. Raw register bytes and comparator pin states remain available in the standalone simulator and are not physiological measurements or backend alerts. The existing five-metric `demo.v1` contract, sensor identity, and historical profiles remain unchanged. Missing events do not sample the temperature simulator and store nulls.

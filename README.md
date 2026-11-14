@@ -102,3 +102,5 @@ The endpoint resolves the session from the registered device assignment at `meas
 The simulator already performs HTTP sending when `--url` is provided; the endpoint receives and stores those messages. It does not launch a long-running simulator inside an HTTP request. Simulator runs generate new event identities; retries of an event must retain its original ID and body.
 
 See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the session setup, request flow, and history query.
+
+The vital-signs generator now obtains `skin_temperature_c` from `monitoring/body_temperature.py` (`MAX30205Simulator.sample()`), retaining its full quantized Celsius value. It travels with the other four vital signs and is returned as `skin_temperature` / `degC` by the existing history and latest routes. Signal loss remains null. No migration or additional dependency is needed. This is simulated skin temperature, not a validated core-body-temperature reading; raw register and comparator outputs remain in the standalone temperature simulator.
