@@ -16,9 +16,9 @@ def reading(sensor_id, metric, value, unit, **extra):
     return {"sensor_id": sensor_id, "metric": metric, "value": value, "unit": unit, "quality": "missing" if value is None else "valid", **extra}
 
 
-def packet(device_id, observed_at, readings):
+def packet(device_id, observed_at, readings, rng):
     return {
-        "packet_id": str(uuid.uuid4()), "device_id": device_id,
+        "packet_id": str(uuid.UUID(int=rng.getrandbits(128), version=4)), "device_id": device_id,
         "session_id": "session-demo-001", "observed_at": observed_at.isoformat(),
         "source": "simulated", "readings": readings,
     }
@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--count", type=int, default=3)
     parser.add_argument("--interval-seconds", type=float, default=2)
     parser.add_argument("--delay-seconds", type=int, default=120)
+    parser.add_argument("--start-at", help="Fixed ISO timestamp for reproducible packet IDs and times")
     parser.add_argument("--new-epoch", required=True, help="UUID printed by seed_demo")
     parser.add_argument("--old-epoch", help="UUID printed by seed_demo, needed with --counter-reset")
     parser.add_argument("--reset-at", help="ISO timestamp printed by seed_demo, needed with --counter-reset")
@@ -70,8 +71,16 @@ def main():
         parser.error("Set HARNESS_DEVICE_TOKEN and DOSIMETER_DEVICE_TOKEN in the environment.")
 
     rng = random.Random(args.seed)
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(seconds=args.count * args.interval_seconds + 1)
+    if args.start_at:
+        try:
+            start = datetime.fromisoformat(args.start_at)
+        except ValueError:
+            parser.error("--start-at must be an ISO 8601 timestamp with timezone.")
+        if start.tzinfo is None or start.utcoffset() is None:
+            parser.error("--start-at needs a timezone.")
+    else:
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        start = now - timedelta(seconds=args.count * args.interval_seconds + 1)
     harness_packets = []
     dosimeter_packets = []
     for index in range(args.count):
@@ -85,12 +94,12 @@ def main():
             reading("accel-x-sim-001", "acceleration_x", f"{rng.uniform(-2, 2):.6f}", "m/s2"),
             reading("accel-y-sim-001", "acceleration_y", f"{rng.uniform(-2, 2):.6f}", "m/s2"),
             reading("accel-z-sim-001", "acceleration_z", f"{rng.uniform(-2, 2):.6f}", "m/s2"),
-        ]))
+        ], rng))
         dosimeter_packets.append(packet("dosimeter-sim-001", observed_at, [
             reading("dose-rate-sim-001", "absorbed_dose_rate", f"{0.01 + rng.random() / 100:.6f}", "uGy/h"),
             reading("dose-total-sim-001", "absorbed_dose_cumulative", str((index + 1) / 100), "uGy", counter_epoch=args.new_epoch),
             reading("exposure-sim-001", "exposure_duration", str(index * args.interval_seconds), "s"),
-        ]))
+        ], rng))
 
     send_batch(args.base_url, harness_token, harness_packets)
     send_batch(args.base_url, dosimeter_token, dosimeter_packets)
@@ -101,13 +110,13 @@ def main():
         late_at = start - timedelta(seconds=args.delay_seconds)
         send_batch(args.base_url, harness_token, [packet("harness-sim-001", late_at, [
             reading("hr-sim-001", "heart_rate", "75", "bpm")
-        ])])
+        ], rng)])
     if args.counter_reset:
         reset_at = datetime.fromisoformat(args.reset_at.replace("Z", "+00:00"))
         old_at = reset_at - timedelta(seconds=1)
         send_batch(args.base_url, dosimeter_token, [packet("dosimeter-sim-001", old_at, [
             reading("dose-total-sim-001", "absorbed_dose_cumulative", "3.0", "uGy", counter_epoch=args.old_epoch)
-        ])])
+        ], rng)])
 
 
 if __name__ == "__main__":

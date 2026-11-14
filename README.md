@@ -35,7 +35,7 @@ Send real HTTP requests with the simulator:
 python3 scripts/simulate_telemetry.py --new-epoch NEW_EPOCH_UUID --old-epoch OLD_EPOCH_UUID --reset-at RESET_AT --seed 7 --count 3 --interval-seconds 2 --delay-seconds 120 --duplicate --missing --counter-reset
 ```
 
-The script uses the two environment tokens, sends through `/api/v1/telemetry/batches/`, and retries temporary failures with increasing waits while keeping the same packet IDs. `--duplicate` resends identical batches, `--missing` emits a null reading, and `--counter-reset` sends a delayed reading from the previous counter epoch. All profiles and numbers are synthetic.
+The script uses the two environment tokens, sends through `/api/v1/telemetry/batches/`, and retries temporary failures with increasing waits while keeping the same packet IDs. `--duplicate` resends identical batches, `--missing` emits a null reading, and `--counter-reset` sends a delayed reading from the previous counter epoch. For identical results across separate runs, use the same `--seed` and an explicit `--start-at` timestamp within the demo session. All profiles and numbers are synthetic.
 
 Consult the resulting history with the authorized human account (curl prompts for its password):
 
