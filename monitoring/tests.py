@@ -2,8 +2,10 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import UUIDField
 from django.test import TestCase
 
 from .models import (
@@ -43,6 +45,13 @@ class MonitoringModelTests(TestCase):
             source=Device.Source.SIMULATED, content_sha256="a" * 64,
         )
 
+    def test_monitoring_primary_keys_are_uuids(self):
+        for model in apps.get_app_config("monitoring").get_models():
+            with self.subTest(model=model.__name__):
+                self.assertIsInstance(model._meta.pk, UUIDField)
+        self.assertIsInstance(self.participant.pk, uuid.UUID)
+        self.assertIsInstance(self.packet.assignment_id, uuid.UUID)
+
     def test_counter_epoch_and_quality_preserve_original_value(self):
         epoch = CounterEpoch.objects.create(
             assignment=self.assignment, sensor=self.sensor, started_at=self.now
@@ -54,7 +63,10 @@ class MonitoringModelTests(TestCase):
         )
         reading.full_clean()
         reading.save()
-        self.assertEqual(Measurement.objects.get(pk=reading.pk).value, Decimal("0.000000000001"))
+        saved = Measurement.objects.select_related("packet__assignment__session__participant").get(pk=reading.pk)
+        self.assertEqual(saved.value, Decimal("0.000000000001"))
+        self.assertIsInstance(saved.pk, uuid.UUID)
+        self.assertEqual(saved.packet.assignment.session.participant, self.participant)
 
     def test_rejects_wrong_unit_and_missing_counter_epoch(self):
         reading = Measurement(

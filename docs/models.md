@@ -5,8 +5,15 @@ confirmadas del arnés ni del dosímetro. Ningún `SensorCapability` se crea o h
 automáticamente. La ingesta debe comprobar capacidad, asignación temporal,
 procedencia y validez de cada valor dentro de una transacción antes de guardar.
 
-- Los identificadores de participante, sesión, dispositivo y sensor son cadenas
-  estables. `packet_id` y la época del contador usan UUID.
+- Las claves primarias de los once modelos de `monitoring` son UUID v4 generados
+  al crear cada fila; las claves foráneas almacenan el UUID de la fila relacionada.
+  Los identificadores legibles de participante, sesión, dispositivo y sensor son
+  cadenas estables adicionales. `packet_id` es el UUID del evento enviado por el
+  emisor y `CounterEpoch.identifier` identifica la época del contador; ambos son
+  distintos de las claves primarias internas de sus respectivas tablas.
+- La migración 0003 convierte las claves primarias únicamente si las tablas de
+  `monitoring` están vacías. Una instalación con datos existentes necesita una
+  migración de datos que remapee claves y relaciones antes de aplicar el cambio.
 - Todas las fechas deben tener zona horaria. `observed_at` procede del emisor;
   `received_at` lo asigna el servidor. Un lote tardío conserva su tiempo original.
 - Los escalares usan `Decimal(30,12)`: hasta 18 cifras enteras y 12 decimales.

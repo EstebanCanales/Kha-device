@@ -54,7 +54,14 @@ CUMULATIVE_METRICS = {
 }
 
 
-class Participant(models.Model):
+class UUIDPrimaryKeyModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    class Meta:
+        abstract = True
+
+
+class Participant(UUIDPrimaryKeyModel):
     pseudonym = models.CharField(max_length=80, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -62,7 +69,7 @@ class Participant(models.Model):
         return self.pseudonym
 
 
-class MonitoringSession(models.Model):
+class MonitoringSession(UUIDPrimaryKeyModel):
     class Gravity(models.TextChoices):
         EARTH = "earth", "Earth"
         MICRO = "microgravity", "Microgravity"
@@ -85,7 +92,7 @@ class MonitoringSession(models.Model):
         return self.identifier
 
 
-class Device(models.Model):
+class Device(UUIDPrimaryKeyModel):
     class Kind(models.TextChoices):
         HARNESS = "harness", "Harness"
         DOSIMETER = "dosimeter", "Dosimeter"
@@ -105,7 +112,7 @@ class Device(models.Model):
         return self.identifier
 
 
-class Sensor(models.Model):
+class Sensor(UUIDPrimaryKeyModel):
     identifier = models.CharField(max_length=80, unique=True)
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="sensors")
     channel = models.CharField(max_length=80)
@@ -122,7 +129,7 @@ class Sensor(models.Model):
         return self.identifier
 
 
-class SensorCapability(models.Model):
+class SensorCapability(UUIDPrimaryKeyModel):
     sensor = models.ForeignKey(Sensor, on_delete=models.PROTECT, related_name="capabilities")
     metric = models.CharField(max_length=50, choices=Metric)
     unit = models.CharField(max_length=20)
@@ -136,7 +143,7 @@ class SensorCapability(models.Model):
             raise ValidationError({"unit": "Unit is incompatible with metric."})
 
 
-class SessionDevice(models.Model):
+class SessionDevice(UUIDPrimaryKeyModel):
     session = models.ForeignKey(MonitoringSession, on_delete=models.PROTECT, related_name="device_assignments")
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="session_assignments")
     assigned_at = models.DateTimeField()
@@ -165,7 +172,7 @@ class SessionDevice(models.Model):
             raise ValidationError("Device assignments cannot overlap.")
 
 
-class CounterEpoch(models.Model):
+class CounterEpoch(UUIDPrimaryKeyModel):
     """One reference period of a device counter; values are never summed here."""
 
     identifier = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -198,7 +205,7 @@ class CounterEpoch(models.Model):
                 raise ValidationError("Counter epochs cannot overlap.")
 
 
-class TelemetryPacket(models.Model):
+class TelemetryPacket(UUIDPrimaryKeyModel):
     packet_id = models.UUIDField()
     schema_version = models.PositiveSmallIntegerField()
     assignment = models.ForeignKey(SessionDevice, on_delete=models.PROTECT, related_name="packets")
@@ -225,7 +232,7 @@ class TelemetryPacket(models.Model):
                 raise ValidationError("Packet time is outside the monitoring session.")
 
 
-class Measurement(models.Model):
+class Measurement(UUIDPrimaryKeyModel):
     class Quality(models.TextChoices):
         VALID = "valid", "Valid"
         UNRELIABLE = "unreliable", "Unreliable"
@@ -270,7 +277,7 @@ class Measurement(models.Model):
             raise ValidationError(errors)
 
 
-class ECGSample(models.Model):
+class ECGSample(UUIDPrimaryKeyModel):
     """Optional raw sample; no ECG acquisition or interpretation is implied."""
 
     packet = models.ForeignKey(TelemetryPacket, on_delete=models.PROTECT, related_name="ecg_samples")
@@ -293,7 +300,7 @@ class ECGSample(models.Model):
             raise ValidationError("ECG capability is not enabled for this sensor and unit.")
 
 
-class AnalysisResult(models.Model):
+class AnalysisResult(UUIDPrimaryKeyModel):
     class Kind(models.TextChoices):
         HRV = "hrv", "Heart rate variability"
         HEART_RHYTHM = "heart_rhythm_pattern", "Heart rhythm pattern"
