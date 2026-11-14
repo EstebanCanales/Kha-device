@@ -6,6 +6,7 @@ from .models import (
     AnalysisResult,
     CounterEpoch,
     Device,
+    DeviceCredential,
     ECGSample,
     Measurement,
     MonitoringSession,
@@ -49,6 +50,20 @@ class DeviceAdmin(admin.ModelAdmin):
     list_display = ("identifier", "kind", "source", "is_active", "firmware_version")
     list_filter = ("kind", "source", "is_active")
     search_fields = ("identifier",)
+
+
+@admin.register(DeviceCredential)
+class DeviceCredentialAdmin(admin.ModelAdmin):
+    list_display = ("id", "device", "is_active", "created_at")
+    list_filter = ("is_active",)
+    fields = ("device", "is_active", "created_at")
+    readonly_fields = ("device", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Sensor)

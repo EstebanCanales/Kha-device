@@ -15,8 +15,35 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+from rest_framework.routers import SimpleRouter
+
+from monitoring.views import (
+    CounterEpochViewSet,
+    DeviceViewSet,
+    ParticipantViewSet,
+    SensorCapabilityViewSet,
+    SensorViewSet,
+    SessionDeviceViewSet,
+    SessionViewSet,
+    TelemetryBatchView,
+    healthz,
+    readyz,
+)
+
+router = SimpleRouter()
+router.register("sessions", SessionViewSet, basename="session")
+router.register("config/participants", ParticipantViewSet)
+router.register("config/devices", DeviceViewSet)
+router.register("config/sensors", SensorViewSet)
+router.register("config/capabilities", SensorCapabilityViewSet)
+router.register("config/assignments", SessionDeviceViewSet)
+router.register("config/counter-epochs", CounterEpochViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v1/', include(router.urls)),
+    path('api/v1/telemetry/batches/', TelemetryBatchView.as_view(), name='telemetry-batches'),
+    path('healthz/', healthz),
+    path('readyz/', readyz),
 ]

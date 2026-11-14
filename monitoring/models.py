@@ -112,6 +112,15 @@ class Device(UUIDPrimaryKeyModel):
         return self.identifier
 
 
+class DeviceCredential(UUIDPrimaryKeyModel):
+    """Revocable verifier for one device; the bearer secret is never stored."""
+
+    device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="credentials")
+    secret_hash = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Sensor(UUIDPrimaryKeyModel):
     identifier = models.CharField(max_length=80, unique=True)
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name="sensors")
