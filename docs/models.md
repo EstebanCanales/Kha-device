@@ -44,3 +44,20 @@ procedencia y validez de cada valor dentro de una transacción antes de guardar.
 Pendiente para hardware real: perfiles, unidad y magnitud exacta del dosímetro,
 referencia y reinicio de sus contadores, formato ECG, procedencia de contexto de
 gravedad, frecuencia de muestreo, reloj y política de retención.
+
+
+## Model code organization
+
+The Django app keeps these domain groups in separate modules under
+`monitoring/models/`. The package re-exports the model classes, so existing
+imports such as `from monitoring.models import Measurement` continue to work.
+
+- `shared.py`: shared `Metric`, unit mappings, cumulative metric set, and UUID model base.
+- `participants.py`: `Participant` and `MonitoringSession`.
+- `sensors.py`: `Device`, `DeviceCredential`, `Sensor`, and `SensorCapability`.
+- `assignments.py`: `SessionDevice` and `CounterEpoch`.
+- `telemetry.py`: `TelemetryPacket`, `Measurement`, and `ECGSample`.
+- `analysis.py`: versioned `AnalysisResult` records.
+
+This is a code organization change. Django model labels, table definitions, and
+migrations stay the same.

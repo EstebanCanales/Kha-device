@@ -4,9 +4,10 @@ from datetime import timedelta
 from io import BytesIO
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import IntegrityError, connection
 from django.db.models import ProtectedError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import is_aware
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -17,7 +18,9 @@ from rest_framework.exceptions import APIException, NotAuthenticated, Validation
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from ia import IAError, describe_engine, run_pipeline
@@ -36,6 +39,10 @@ from .models import (
     SensorCapability,
     SessionDevice,
 )
+from .nasa_radiation import RadiationUnavailable, fetch_radiation_events
+from .radiation_serializers import RadiationContextSerializer, RadiationQuerySerializer
+from .report_serializers import CombinedReportSerializer, ReportQuerySerializer
+from .reports import build_report, report_as_text
 from .serializers import (
     BatchInputSerializer,
     BatchOutputSerializer,
@@ -175,7 +182,10 @@ def _history_filters(request, session):
     for name, lookup in (("observed_from", "gte"), ("observed_to", "lte")):
         raw = request.query_params.get(name)
         if raw:
-            instant = parse_datetime(raw)
+            try:
+                instant = parse_datetime(raw)
+            except ValueError:
+                instant = None
             if instant is None or not is_aware(instant):
                 raise ValidationError({name: "Use an ISO 8601 timestamp with timezone."})
             readings = readings.filter(**{f"packet__observed_at__{lookup}": instant})
@@ -185,6 +195,11 @@ def _history_filters(request, session):
         if end < start or end - start > timedelta(days=31):
             raise ValidationError("Date range must be ordered and at most 31 days.")
     return readings
+
+
+class RadiationRateThrottle(UserRateThrottle):
+    rate = "30/min"
+    scope = "nasa_radiation"
 
 
 class SessionViewSet(viewsets.ModelViewSet):
@@ -209,6 +224,53 @@ class SessionViewSet(viewsets.ModelViewSet):
             instance.delete()
         except ProtectedError as error:
             raise Conflict() from error
+
+    @extend_schema(
+        parameters=[RadiationQuerySerializer],
+        responses={200: RadiationContextSerializer, 503: str},
+        description="NASA DONKI RBE context for an authorized session. UTC dates, at most 31 inclusive days. Environmental events are not personal dosimeter measurements. Cached for 15 minutes; fetched_at identifies retrieval time.",
+    )
+    @action(detail=True, methods=["get"], url_path="radiation-context", pagination_class=None,
+            filter_backends=[], throttle_classes=[RadiationRateThrottle])
+    def radiation_context(self, request, pk=None):
+        self.get_object()  # Authorize before cache access or any upstream request.
+        query = RadiationQuerySerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        options = query.validated_data
+        if not settings.RADATION_API_KEY:
+            return Response({"detail": "RADATION_API_KEY is not configured."}, status=503)
+        cache_key = f"nasa-rbe:{options['start_date']}:{options['end_date']}"
+        result = cache.get(cache_key)
+        if result is None:
+            try:
+                result = fetch_radiation_events(**options, api_key=settings.RADATION_API_KEY)
+            except RadiationUnavailable as error:
+                return Response({"detail": str(error)}, status=503)
+            cache.set(cache_key, result, timeout=900)
+        response = Response(result)
+        response["Cache-Control"] = "no-store"
+        return response
+
+    @extend_schema(
+        parameters=[ReportQuerySerializer],
+        responses={(200, "application/json"): CombinedReportSerializer, (200, "text/plain"): str},
+        description="Single JSON report tagged as vital_signs, body_temperature, and dosimeter. Requires an explicit source and time window. Maximum 1000 readings; narrow the window on 400. No inference is performed.",
+    )
+    @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[], renderer_classes=[JSONRenderer])
+    def report(self, request, pk=None):
+        session = self.get_object()
+        query = ReportQuerySerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        options = dict(query.validated_data)
+        output = options.pop("output")
+        report = build_report(user=request.user, session_id=session.pk, **options)
+        if output == "text":
+            response = HttpResponse(report_as_text(report), content_type="text/plain; charset=utf-8")
+        else:
+            response = Response(report)
+            response["Content-Disposition"] = f'attachment; filename="telemetry-report-{session.pk}.json"'
+        response["Cache-Control"] = "no-store"
+        return response
 
     @extend_schema(
         parameters=[

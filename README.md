@@ -123,7 +123,7 @@ The local smoke test used SQLite; PostgreSQL constraints and concurrent retries 
 
 ## vital_signs simulator endpoint
 
-`POST /api/v1/telemetry/vital-signs/` accepts the existing `demo.v1` events from `monitoring/sensors/vital_signs.py`. It stores five separate measurements per event: heart rate, pulse rate, SpO₂, respiratory rate, and **skin** temperature. This is a synthetic adapter, not a verified ADI watch protocol or Wavetool importer. Raw signals and activity outputs described for the watch are not emitted by this simulator.
+`POST /api/v1/telemetry/vital-signs/` accepts the existing `demo.v1` events from `scripts/vital_signs.py`. It stores five separate measurements per event: heart rate, pulse rate, SpO₂, respiratory rate, and **skin** temperature. This is a synthetic adapter, not a verified ADI watch protocol or Wavetool importer. Raw signals and activity outputs described for the watch are not emitted by this simulator.
 
 Create a session (or use `seed_demo --reader YOUR_USERNAME`), then configure its simulated watch:
 
@@ -136,7 +136,7 @@ uv run python manage.py provision_device_token studywatch-sim-001
 Set `TELEMETRY_AUTHORIZATION` to `Device CREDENTIAL_UUID:SECRET` using the credential printed once by the command. Start Django with `uv run python manage.py runserver`, then send:
 
 ```bash
-uv run python monitoring/sensors/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
+uv run python scripts/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
 ```
 
 The endpoint resolves the session from the registered device assignment at `measured_at`. The random run ID inside `event_id` is not a monitoring-session identifier. HTTP 201 means stored, 200 means an identical retry, and 409 means the same event identity was reused with different readings. `signal-loss` stores nulls; `invalid` deliberately produces rejected events. A credential cannot send for another device or a hardware profile. Read results through the existing session history endpoint with `source=simulated`.
@@ -144,3 +144,31 @@ The endpoint resolves the session from the registered device assignment at `meas
 The simulator already performs HTTP sending when `--url` is provided; the endpoint receives and stores those messages. It does not launch a long-running simulator inside an HTTP request. Simulator runs generate new event identities; retries of an event must retain its original ID and body.
 
 See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the session setup, request flow, and history query.
+
+## Dedicated dosimeter
+
+The new [dosimeter simulator and run guide](docs/dosimeter.md) records absorbed dose rate, cumulative absorbed dose with reset epochs, exposure history and increases, reading/mission timing, internal temperature, and synthetic DIS/storage status. It sends through the existing authenticated batch endpoint and keeps a durable local journal for offline replay. SQLite stands in for device storage; physical FRAM and DIS integration require hardware specifications.
+
+## NASA radiation context
+
+Set `RADATION_API_KEY` in the environment to fetch NASA DONKI radiation-belt enhancement events. From the repository root:
+
+```bash
+uv run python -m scripts.nasa_radiation --start-date 2024-05-01 --end-date 2024-05-15
+```
+
+Authorized session readers can also call `GET /api/v1/sessions/{uuid}/radiation-context/?start_date=2024-05-01&end_date=2024-05-15`. These are environmental events, not personal dose readings; the response is separate from simulated dosimeter telemetry. See [configuration, response semantics, and limits](docs/dosimeter.md#nasa-radiation-belt-context).
+
+## Combined reports for model input
+
+`GET /api/v1/sessions/{uuid}/report/?source=simulated&observed_from=START&observed_to=END` combines stored vital-sign and dosimeter readings from the same session. It returns a single downloadable JSON document (`combined-telemetry-report.v2`) with `vital_signs`, `body_temperature`, and `dosimeter` categories. Every reading carries a `category` tag. Body temperature currently means skin temperature; the dosimeter’s internal temperature stays in the dosimeter category. Add `&output=text` for readable model input. Use timezone-aware dates and an authorized human account. Reports preserve quality, units, timestamps, and counter epochs, and explicitly identify missing domains. Limits: 31 days and 1,000 readings per report, with no silent truncation. See the [combined report guide](docs/combined-reports.md) for setup, export, and internal Python usage. This functionality generates reports only; it does not run AI models.
+
+## Quick automated endpoint tests
+
+All tests live in [`monitoring/tests/`](monitoring/tests/README.md). Run the isolated suite with no server or hardware:
+
+```bash
+uv run --locked python manage.py test monitoring.tests --settings=config.test_settings
+```
+
+This uses an in-memory SQLite database and a test-only fast password hasher. For one area, replace `monitoring.tests` with `monitoring.tests.test_reports`, `monitoring.tests.test_configuration`, or another module listed in the test guide. See [endpoint analysis and coverage](docs/endpoint-tests.md) for the full route inventory and limitations.
