@@ -92,31 +92,160 @@
 <script>
 	import { clamp01, fbm, glyph, hash, mount, noise, smooth } from '../scripts/ascii';
 
-	type Kind = 'truss' | 'solar' | 'radiator' | 'module' | 'panel';
-	interface Part {
+	type Rgb = readonly [number, number, number];
+	type Hit = [string, string] | null;
+	// Cada pieza se pinta en coordenadas propias: u y v van de -1 a 1 dentro de su caja; lx y ly son las de la estación.
+	interface Shape {
 		x: number;
 		y: number;
 		w: number;
 		h: number;
-		kind: Kind;
+		paint: (u: number, v: number, lx: number, ly: number, t: number) => Hit;
 	}
 
-	// Piezas en coordenadas locales (la viga mide 2 de punta a punta). Las últimas tapan a las primeras.
-	const part = (kind: Kind, x: number, y: number, w: number, h: number): Part => ({ kind, x, y, w, h });
-	const PARTS: Part[] = [
-		// Ocho alas solares: dos pares por lado, arriba y abajo de la viga.
-		...[-0.92, -0.68, 0.68, 0.92].flatMap((x) => [part('solar', x, -0.36, 0.085, 0.28), part('solar', x, 0.36, 0.085, 0.28)]),
-		part('radiator', -0.32, 0.2, 0.05, 0.16),
-		part('radiator', 0.32, 0.2, 0.05, 0.16),
-		part('truss', 0, 0, 1.0, 0.04),
-		// Paneles del segmento ruso.
-		part('panel', -0.2, 0.4, 0.11, 0.03),
-		part('panel', 0.2, 0.4, 0.11, 0.03),
-		// Módulos presurizados: eje principal y cruces.
-		part('module', 0, -0.24, 0.15, 0.034),
-		part('module', 0, 0.16, 0.2, 0.036),
-		part('module', 0, 0.08, 0.045, 0.44),
+	const rgb = (c: Rgb, k = 1) => `rgb(${Math.min(255, (c[0] * k) | 0)},${Math.min(255, (c[1] * k) | 0)},${Math.min(255, (c[2] * k) | 0)})`;
+	// Rampa corta y limpia para las piezas: de menos a más tinta, sin paréntesis ni llaves que ensucien.
+	const tone = (v: number) => ' .:-=+*#%@'[Math.round(clamp01(v) * 9)];
+	const shape = (x: number, y: number, w: number, h: number, paint: Shape['paint']): Shape => ({ x, y, w, h, paint });
+
+	const WHITE: Rgb = [226, 228, 232];
+	const GRAY: Rgb = [176, 180, 190];
+	const LAB: Rgb = [208, 210, 216];
+	const GOLD: Rgb = [218, 172, 88];
+	const BLUE: Rgb = [50, 84, 176];
+
+	/**
+	 * Cilindro (módulo presurizado). `axis` es hacia dónde corre su eje. La luz llega desde arriba a la izquierda:
+	 * el lomo brilla, los bordes se oscurecen; `ring` marca las juntas, `windows` las ventanas y `foil` la manta térmica dorada.
+	 */
+	function hull(axis: 'x' | 'y', c: Rgb, o: { ring?: number; windows?: number; foil?: boolean } = {}): Shape['paint'] {
+		return (u, v, lx, ly) => {
+			const across = axis === 'x' ? v : u;
+			const along = axis === 'x' ? lx : ly;
+			const lit = Math.sqrt(Math.max(0, 1 - across * across)) * (1 - 0.28 * across);
+			let k = 0.3 + lit * 0.8;
+			if (o.ring && Math.abs(Math.sin(along * o.ring)) < 0.06) k *= 0.5;
+			if (o.foil) k *= 0.88 + 0.12 * Math.sin(lx * 150) * Math.sin(ly * 130);
+			if (o.windows && Math.abs(across) < 0.2 && Math.sin(along * o.windows) > 0.93) return ['.', 'rgb(18,26,46)'];
+			return [tone(0.34 + lit * 0.6), rgb(c, k)];
+		};
+	}
+
+	// Cúpula de observación: media esfera con ventanas en anillo.
+	const dome: Shape['paint'] = (u, v) => {
+		const r = Math.hypot(u, v);
+		if (r > 1) return null;
+		const lit = Math.sqrt(1 - r * r) * (1 - 0.25 * (u + v) * 0.5);
+		if (r > 0.38 && r < 0.62 && Math.sin(Math.atan2(v, u) * 3.5) > 0.5) return ['.', 'rgb(70,110,170)'];
+		return [tone(0.34 + lit * 0.58), rgb(GRAY, 0.3 + lit * 0.8)];
+	};
+
+	// Paneles solares pequeños (segmento ruso): marco claro, celdas azules en rejilla.
+	const panel: Shape['paint'] = (u, v) => {
+		if (Math.abs(u) > 0.93 || Math.abs(v) > 0.9) return ['|', 'rgb(176,180,190)'];
+		if (((u + 1) * 3) % 1 < 0.1) return ['|', 'rgb(30,48,100)'];
+		if (((v + 1) * 4) % 1 < 0.16) return ['-', 'rgb(34,56,120)'];
+		return [u < 0 ? '#' : '%', rgb(BLUE, 0.9 + 0.2 * Math.abs(v))];
+	};
+
+	// Ala solar grande: mástil dorado al centro, dos mantas con rejilla y un destello que las recorre.
+	const wing = (x: number, y: number): Shape =>
+		shape(x, y, 0.09, 0.29, (u, v, _lx, _ly, t) => {
+			if (Math.abs(u) < 0.07) return [':', 'rgb(214,176,96)'];
+			if (Math.abs(u) > 0.95) return ['|', 'rgb(160,136,84)'];
+			if (Math.abs(v) > 0.97) return ['=', 'rgb(196,164,100)'];
+			const side = (Math.abs(u) - 0.07) / 0.88;
+			if ((side * 3) % 1 < 0.06) return ['|', 'rgb(22,38,86)'];
+			if (Math.sin(v * 26) > 0.86) return ['-', 'rgb(28,46,104)'];
+			const glint = smooth(0.78, 1, Math.sin(v * 2.4 - t * 0.5 + x * 3));
+			return [side < 0.5 ? '#' : '%', rgb([44 + glint * 70, 78 + glint * 70, 170], 0.72 + glint * 0.5)];
+		});
+
+	// Radiador térmico: tres tiras blancas con lamas.
+	const radiator = (x: number, y: number): Shape =>
+		shape(x, y, 0.07, 0.17, (u, v) => {
+			if (((u + 1) * 1.5) % 1 < 0.08) return ['|', 'rgb(112,118,132)'];
+			return [Math.sin(v * 40) > 0.4 ? '=' : '-', 'rgb(218,222,230)'];
+		});
+
+	// Viga principal: celosía con cordones arriba y abajo, riostras en X y nudos en cada tramo.
+	const truss: Shape['paint'] = (u, v, lx) => {
+		const bay = lx * 30;
+		const f = bay - Math.floor(bay);
+		if (Math.abs(v) > 0.55) return [f < 0.1 ? '+' : '=', 'rgb(186,190,198)'];
+		if (f < 0.09) return ['|', 'rgb(150,154,164)'];
+		return [(Math.floor(bay) + (v > 0 ? 1 : 0)) % 2 ? '/' : '\\', 'rgb(132,136,148)'];
+	};
+
+	// Cápsula Crew Dragon acoplada: morro, cápsula blanca y baúl azul oscuro.
+	const dragon: Shape['paint'] = (u, v) => {
+		const y = (v + 1) / 2;
+		const half = y < 0.3 ? 0.3 + ((0.74 - 0.3) * y) / 0.3 : y < 0.62 ? 0.74 : 0.8;
+		if (Math.abs(u) > half) return null;
+		const across = u / half;
+		const lit = Math.sqrt(1 - across * across) * (1 - 0.25 * across);
+		if (y < 0.07) return ['=', 'rgb(70,74,84)'];
+		const trunk = y >= 0.62;
+		const base: Rgb = trunk ? [58, 74, 132] : [234, 236, 240];
+		return [tone(0.34 + lit * 0.6), rgb(base, 0.3 + lit * 0.8)];
+	};
+
+	// Estructura expuesta de Kibo: un bastidor abierto.
+	const frame: Shape['paint'] = (u, v) =>
+		Math.abs(u) > 0.78 || Math.abs(v) > 0.7 ? ['#', 'rgb(120,126,140)'] : Math.sin(u * 14) > 0.7 ? ['+', 'rgb(96,102,118)'] : null;
+
+	// Piezas de abajo a arriba: las últimas tapan a las primeras.
+	const SHAPES: Shape[] = [
+		// Radiadores y ocho alas solares: dos pares por lado, arriba y abajo de la viga.
+		radiator(-0.4, 0.22),
+		radiator(0.4, 0.22),
+		...[-0.93, -0.66, 0.66, 0.93].flatMap((x) => [wing(x, -0.34), wing(x, 0.34)]),
+		// Segmento ruso, de arriba abajo: Progress, Zvezda y Zarya (dorados), con sus paneles.
+		shape(-0.2, -0.47, 0.13, 0.06, panel),
+		shape(0.2, -0.47, 0.13, 0.06, panel),
+		shape(-0.115, -0.325, 0.06, 0.04, panel),
+		shape(0.115, -0.325, 0.06, 0.04, panel),
+		shape(0, -0.6, 0.028, 0.05, hull('y', WHITE, { ring: 90 })),
+		shape(0, -0.47, 0.05, 0.07, hull('y', GOLD, { ring: 55, foil: true })),
+		shape(0, -0.325, 0.05, 0.075, hull('y', GOLD, { ring: 62, foil: true })),
+		// Segmento estadounidense y socios: Unity, Destiny y Harmony en el eje; Tranquility, Cúpula, esclusa, Columbus y Kibo a los lados.
+		shape(-0.125, -0.215, 0.074, 0.034, hull('x', GRAY, { ring: 50, windows: 44 })),
+		shape(-0.235, -0.215, 0.04, 0.04, dome),
+		shape(0.1, -0.215, 0.045, 0.03, hull('x', WHITE, { ring: 60 })),
+		shape(0, -0.215, 0.052, 0.035, hull('y', GRAY, { ring: 80 })),
+		shape(0, -0.1, 0.055, 0.08, hull('y', LAB, { ring: 48, windows: 46 })),
+		shape(-0.14, 0.075, 0.08, 0.036, hull('x', LAB, { ring: 44, windows: 40 })),
+		shape(0.15, 0.075, 0.092, 0.038, hull('x', WHITE, { ring: 40 })),
+		shape(0.285, 0.075, 0.04, 0.026, frame),
+		shape(0, 0.075, 0.052, 0.045, hull('y', GRAY, { ring: 70 })),
+		shape(0, 0.145, 0.03, 0.025, hull('y', [150, 154, 162], { ring: 120 })),
+		shape(0, 0.29, 0.075, 0.12, dragon),
+		// La viga y sus articulaciones rotatorias van por delante de los módulos.
+		shape(0, 0, 1.0, 0.05, truss),
+		shape(0, 0, 0.075, 0.085, hull('x', [196, 200, 208], { ring: 70 })),
+		shape(-0.5, 0, 0.05, 0.078, hull('x', [150, 154, 164], { ring: 90 })),
+		shape(0.5, 0, 0.05, 0.078, hull('x', [150, 154, 164], { ring: 90 })),
 	];
+
+	// Brazo robótico Canadarm2: dos plumas y tres articulaciones, sobre la viga.
+	const ARM: [number, number][] = [
+		[0.14, -0.04],
+		[0.24, -0.17],
+		[0.33, -0.12],
+		[0.37, -0.21],
+	];
+	function armHit(lx: number, ly: number): Hit {
+		let best = Infinity;
+		for (let n = 0; n < ARM.length - 1; n++) {
+			const [ax, ay] = ARM[n], [bx, by] = ARM[n + 1];
+			const dx = bx - ax, dy = by - ay;
+			const k = clamp01(((lx - ax) * dx + (ly - ay) * dy) / (dx * dx + dy * dy));
+			best = Math.min(best, Math.hypot(lx - (ax + k * dx), ly - (ay + k * dy)));
+		}
+		if (best < 0.011) return ['#', 'rgb(236,238,242)'];
+		for (const [jx, jy] of ARM.slice(1, 3)) if (Math.hypot(lx - jx, ly - jy) < 0.02) return ['@', 'rgb(200,204,212)'];
+		return null;
+	}
 
 	const STARS = ['#8fa6d8', '#d8cfa0', '#d59a86', '#9fd0c8'];
 
@@ -130,47 +259,31 @@
 	}
 
 	// Devuelve [símbolo, color] de la pieza que cubre el punto local, o null.
-	function station(lx: number, ly: number, t: number): [string, string] | null {
-		for (let n = PARTS.length - 1; n >= 0; n--) {
-			const p = PARTS[n];
-			const u = (lx - p.x) / p.w, v = (ly - p.y) / p.h;
+	function station(lx: number, ly: number, t: number): Hit {
+		const arm = armHit(lx, ly);
+		if (arm) return arm;
+		for (let n = SHAPES.length - 1; n >= 0; n--) {
+			const s = SHAPES[n];
+			const u = (lx - s.x) / s.w, v = (ly - s.y) / s.h;
 			if (u < -1 || u > 1 || v < -1 || v > 1) continue;
-
-			if (p.kind === 'module') {
-				// Cilindro: más luz en el lomo, juntas oscuras a lo largo del eje.
-				const across = p.w < p.h ? u : v;
-				const along = p.w < p.h ? v * p.h : u * p.w;
-				const joint = Math.abs(Math.sin(along * 34)) < 0.16 ? 0.55 : 1;
-				const lit = Math.sqrt(1 - across * across) * joint;
-				const k = 0.3 + lit * 0.7;
-				return [glyph(0.3 + lit * 0.65), `rgb(${(226 * k) | 0},${(226 * k) | 0},${(220 * k) | 0})`];
-			}
-			if (p.kind === 'truss') return [Math.sin(lx * 90) > 0 ? '#' : '=', 'rgb(150,154,162)'];
-			if (p.kind === 'radiator') return [Math.abs(u) > 0.7 ? '|' : ':', 'rgb(196,200,208)'];
-			if (p.kind === 'panel') return [Math.sin(u * 14) > 0 ? '#' : '=', 'rgb(58,92,170)'];
-
-			// Ala solar: mástil dorado al centro, marco y celdas azules con un destello que la recorre.
-			if (Math.abs(u) < 0.14) return [':', 'rgb(196,158,84)'];
-			if (Math.abs(u) > 0.86) return ['|', 'rgb(150,124,72)'];
-			const glint = smooth(0.75, 1, Math.sin(v * 2.2 - t * 0.5 + p.x * 3));
-			const k = 0.7 + glint * 0.5;
-			return [Math.sin(v * p.h * 190) > 0 ? '#' : '=', `rgb(${(40 * k + glint * 60) | 0},${(72 * k + glint * 60) | 0},${(160 * k) | 0})`];
+			const hit = s.paint(u, v, lx, ly, t);
+			if (hit) return hit;
 		}
 		return null;
 	}
 
 	if (section && canvas) {
 		const scene = mount(canvas, {
-			fontSize: (w) => (w < 640 ? 7 : 8),
+			fontSize: (w) => (w < 640 ? 6 : 7),
 			stillAt: 20,
 			draw({ ctx, W, H, cw, ch, cols, rows }, t) {
 				const wide = W > 900;
 				const p = progress();
-				// La estación cruza despacio la pantalla a medida que se hace scroll.
-				const S = Math.min(W * (wide ? 0.25 : 0.42), H * 0.3);
-				const cx = (wide ? W * 0.66 : W * 0.5) + (0.5 - p) * W * 0.16;
-				const cy = (wide ? H * 0.35 : H * 0.46) + Math.sin(t * 0.4) * H * 0.006;
-				const ang = -0.2 + Math.sin(t * 0.13) * 0.05;
+				// La estación cruza despacio la pantalla y se inclina un poco a medida que se hace scroll.
+				const S = wide ? Math.min(W * 0.27, H * 0.5) : Math.min(W * 0.44, H * 0.26);
+				const cx = (wide ? W * 0.68 : W * 0.5) + (0.5 - p) * W * 0.14;
+				const cy = (wide ? H * 0.44 : H * 0.46) + Math.sin(t * 0.4) * H * 0.006;
+				const ang = -0.2 + (p - 0.5) * 0.24 + Math.sin(t * 0.13) * 0.04;
 				const ca = Math.cos(ang), sa = Math.sin(ang);
 
 				// Limbo de la Tierra: un arco enorme que asoma por abajo.
@@ -183,7 +296,7 @@
 						const dx = x - cx, dy = y - cy;
 						const lx = (dx * ca + dy * sa) / S, ly = (dy * ca - dx * sa) / S;
 
-						if (lx > -1.05 && lx < 1.05 && ly > -0.7 && ly < 0.7) {
+						if (lx > -1.08 && lx < 1.08 && ly > -0.75 && ly < 0.75) {
 							const cell = station(lx, ly, t);
 							if (cell) {
 								if (cell[0] === ' ') continue;

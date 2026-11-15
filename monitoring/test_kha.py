@@ -8,7 +8,7 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from ia import IAError
@@ -226,6 +226,21 @@ class DashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Actualizar análisis")
         self.assertContains(response, "No se pudo conectar con el servidor")
+
+    @override_settings(LOGOUT_REDIRECT_URL="https://landing.example/")
+    def test_signing_out_sends_the_user_to_the_landing_page(self):
+        get_user_model().objects.create_user("operator", password="operator-password")
+        self.client.login(username="operator", password="operator-password")
+        response = self.client.post("/accounts/logout/")
+        self.assertRedirects(response, "https://landing.example/", fetch_redirect_response=False)
+        # The session is really closed: the app asks for a login again.
+        self.assertEqual(self.client.get("/app/").status_code, 302)
+
+    def test_logout_destination_defaults_to_the_local_landing(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.LANDING_URL, "http://localhost:4321/")
+        self.assertEqual(settings.LOGOUT_REDIRECT_URL, settings.LANDING_URL)
 
     def test_root_redirects_to_the_app(self):
         self.assertEqual(self.client.get("/")["Location"], "/app/")
