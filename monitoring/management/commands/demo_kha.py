@@ -28,21 +28,26 @@ class Command(BaseCommand):
         parser.add_argument("--scenario", choices=("stress", "baseline"), default="stress")
         parser.add_argument("--seed", type=int, default=1)
         parser.add_argument("--more", action="store_true", help="Add another window even if simulated data already exists")
+        parser.add_argument("--no-user", action="store_true",
+                            help="Load the session and data without creating a login account (nothing secret is printed)")
 
     def handle(self, *args, **options):
         out = self.stdout
         call_command("migrate", verbosity=0, interactive=False)
 
-        username = options["username"]
-        user, created = get_user_model().objects.get_or_create(username=username)
-        password = None
-        if created:
-            password = options["password"] or secrets.token_urlsafe(9)
-            user.set_password(password)
-            user.save()
+        # --no-user is for hosted deployments, where accounts come from sign-up and a generated password
+        # would otherwise end up in the deployment logs.
+        username = None if options["no_user"] else options["username"]
+        created, password = False, None
+        if username:
+            user, created = get_user_model().objects.get_or_create(username=username)
+            if created:
+                password = options["password"] or secrets.token_urlsafe(9)
+                user.set_password(password)
+                user.save()
 
         setup = StringIO()
-        call_command("setup_kha_devices", reader=username, stdout=setup)
+        call_command("setup_kha_devices", **({"reader": username} if username else {}), stdout=setup)
         info = dict(line.split("=", 1) for line in setup.getvalue().splitlines() if "=" in line)
         session = MonitoringSession.objects.get(identifier=info["session_identifier"])
 
@@ -74,6 +79,9 @@ class Command(BaseCommand):
                     stored += ingest_batch(batch.validated_data, credential)["inserted"]
             out.write(f"Se cargaron {stored} paquetes simulados ({options['scenario']}, {options['minutes']} min).")
 
+        if not username:
+            out.write(self.style.SUCCESS("Listo. Sesión de demostración cargada, sin crear usuario."))
+            return
         out.write("")
         out.write(self.style.SUCCESS("Listo. Ahora arranca el servidor y abre la app:"))
         out.write("  uv run python manage.py runserver")

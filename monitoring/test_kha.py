@@ -319,6 +319,14 @@ class DemoCommandTests(TestCase):
         self.assertEqual(Measurement.objects.count(), before)
         self.assertTrue(get_user_model().objects.get(username="demo").check_password("clave-original-1"))
 
+    def test_no_user_loads_the_session_without_an_account_or_a_password(self):
+        text = self.run_demo("--no-user")
+        self.assertIn("Se cargaron 96 paquetes", text)
+        self.assertNotIn("Contraseña", text)
+        self.assertFalse(get_user_model().objects.filter(username="demo").exists())
+        self.assertTrue(MonitoringSession.objects.filter(identifier="session-kha-001").exists())
+        self.assertIn("ya tiene datos simulados", self.run_demo("--no-user"))
+
     def test_more_adds_another_window_without_colliding_with_the_first(self):
         self.run_demo("--minutes", "20")
         before = Measurement.objects.count()
