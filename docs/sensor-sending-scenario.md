@@ -27,7 +27,7 @@ In another terminal, set the authorization header from the credential pair and r
 
 ```bash
 export TELEMETRY_AUTHORIZATION='Device CREDENTIAL_UUID:SECRET'
-uv run python monitoring/sensors/vital_signs.py \
+uv run python scripts/vital_signs.py \
   --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ \
   --samples 10 --interval 1 --scenario baseline
 ```
@@ -76,7 +76,7 @@ The response is paginated and includes each value, unit, quality, sensor, measur
 Signal loss is represented as missing readings with `null`, not zero:
 
 ```bash
-uv run python monitoring/sensors/vital_signs.py \
+uv run python scripts/vital_signs.py \
   --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ \
   --samples 9 --interval 1 --scenario signal-loss
 ```

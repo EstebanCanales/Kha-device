@@ -28,3 +28,27 @@ Estas decisiones se tomaron a petición expresa del proyecto y amplían lo que `
 - **Un solo `overview`.** El panel pide análisis, series por sensor (últimas 3 horas, hasta 120 puntos, un contador por sensor y época) y el motor de IA activo en una única petición. Antes eran unas once, y si el servidor no respondía el navegador solo decía "Failed to fetch". Ahora los errores de red y de servidor se explican en la pantalla y se conservan los últimos datos.
 - **Síntesis que resume.** Cada especialista aporta una frase calculada (`headline`: cuántas señales cambiaron) además de sus detalles. La síntesis del motor `rules` une esas frases y añade una nota de que los cambios coinciden en el tiempo sin implicar causa, solo si ambos especialistas detectaron cambios. Con modelos reales, esas frases calculadas siempre encabezan los hallazgos.
 - **Resumen por `POST`.** Genera texto y no guarda nada; puede tardar minutos con modelos reales y corre dentro de la petición. Un despliegue real necesitará una cola o ejecución en segundo plano, hoy fuera de alcance.
+
+## Dedicated dosimeter prototype
+
+- Reuse the batch API, device credentials, session authorization, read-only history, and counter epochs; no additional ingestion endpoint is needed.
+- Use a separate `dosimeter-detail-sim-001` profile so existing demo sensor configuration is preserved.
+- Store status as explicitly documented application codes and elapsed times as decimal seconds. DIS state is aggregate until the chamber inventory and protocol are known.
+- Use a durable SQLite desktop journal as a storage adapter stand-in. It is not FRAM hardware support. Preserve records and identities through acknowledgment and replay; retention remains pending.
+- Synthetic cumulative increments are independent fixtures, not inferred from rates. A rate-increase flag compares adjacent valid captures only and has no radiological-risk meaning.
+
+## Combined reports
+
+- Generate bounded JSON/text reports on demand from both acquisition streams within one authorized session and source. No additional database tables, model calls, inference, external delivery, or scheduled jobs.
+- Require explicit start/end timestamps; use half-open windows for adjacent report exports. Reject oversized reports instead of hiding readings from a model through truncation.
+- Preserve per-reading evidence and quality, and group different units, epochs, methods, and profiles separately. No synthetic time alignment or cumulative-dose totals.
+- Internal report consumers must supply an active authorized Django user. Reports omit names/pseudonyms and credentials. Stored report retention and downstream model token budgets remain caller responsibilities.
+
+- Combined report v2 separates `body_temperature` from `vital_signs`, tags every series/reading/latest observation, and returns one JSON attachment by default. Internal circuit temperature remains dosimeter telemetry. Existing data and ingestion contracts do not change.
+
+## NASA DONKI radiation context
+
+- Use the requested `https://api.nasa.gov/DONKI/RBE` endpoint and `RADATION_API_KEY` environment variable. No dependency or database migration is required.
+- RBE records are external environmental events, not worn-dosimeter measurements. Preserve original event fields and retrieval provenance separately from hardware/simulated telemetry; do not derive Gy, Sv, rates, counters, or risk from events.
+- Provide a bounded client, `scripts/nasa_radiation.py`, and an authorized session `radiation-context` read action. No credentials or participant data appear in outputs/upstream queries, respectively.
+- Cache only successful results for 15 minutes; retain `fetched_at`. Explicitly report upstream failures instead of fabricating readings or silently falling back. Database persistence, spatial correlation, and incorporation into combined reports are outside this change.

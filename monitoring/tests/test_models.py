@@ -8,7 +8,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import UUIDField
 from django.test import TestCase
 
-from .models import (
+from monitoring.models import (
     CounterEpoch,
     Device,
     Measurement,

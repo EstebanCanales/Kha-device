@@ -66,3 +66,11 @@ Respuesta con inserciones (`201`) o solo duplicados (`200`):
 `GET /api/v1/sessions/{uuid}/analysis/?source=…` devuelve el análisis descriptivo de la sesión (línea base personal, cambios, contadores de dosis por cámara y pausas) y `POST /api/v1/sessions/{uuid}/summary/?source=…` ejecuta el módulo de IA sobre ese análisis y responde `503` si el motor no está disponible. Ninguna ruta guarda resultados.
 
 Ambas consultas de lecturas requieren `source=hardware` o `source=simulated`. Admiten `metric`, `sensor` (identificador legible), `observed_from` y `observed_to` con zona horaria. Si se aportan ambos tiempos, el intervalo máximo es de 31 días. La respuesta incluye valor, unidad, calidad, procedencia, `observed_at`, `received_at` y versión de perfil. Las lecturas aceptadas no tienen endpoints genéricos de edición ni borrado.
+
+## Dosimeter extension
+
+The synthetic `dosimeter-demo.v1` profile adds `measurement_interval` and `mission_elapsed_time` (`s`), `internal_temperature` (`degC`), `dis_chamber_status` and `storage_status` (`code`: 0 unknown, 1 ok, 2 fault), and `dose_rate_increase` (`1`: 0 false, 1 true). Missing values remain null. Elapsed timing values cannot be negative. Absorbed dose rate also accepts `uGy/min`; no automatic conversion occurs. See [dosimeter guide](dosimeter.md) for exact meanings, configuration, replay, and hardware limitations. Batch schema version remains 1; the sensor profile records the extension version.
+
+## Combined report query
+
+`GET /api/v1/sessions/{uuid}/report/` requires `source`, `observed_from`, and `observed_to`; optional `output=json|text` defaults to JSON. This route uses an explicitly **half-open** observation window `[observed_from, observed_to)`, at most 31 days, and rejects reports above 1,000 supported readings with `400`. Access follows session authorization. The versioned `combined-telemetry-report.v2` contract groups vital signs and dosimeter readings without combining units or epochs. See [combined reports](combined-reports.md) for fields, scope, and model-input semantics.
