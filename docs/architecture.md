@@ -77,6 +77,8 @@ All read routes hang from a session: `/api/v1/sessions/{uuid}/...`. The code is 
 2. With `OPEN_READ_ACCESS` on, every signed-in account reads everything. This is for demonstrations with simulated data.
 3. Otherwise an account reads only the sessions it was authorized for.
 
+4. With `PUBLIC_DEMO` on, a visitor without an account is a reader too, limited to simulated data: a request for hardware data answers `403`.
+
 A session an account may not read answers `404`, the same as a session that does not exist, so the API does not reveal which sessions exist. Changing anything is staff-only in every mode.
 
 ## Analysis: what changed

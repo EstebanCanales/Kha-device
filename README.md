@@ -80,6 +80,7 @@ The application reads environment variables. It does not load `.env` by itself; 
 | `ALLOW_SIGNUP` | Self-service account creation | on in debug, off otherwise |
 | `SIGNUP_DEMO_SESSION` | Session identifier granted to new accounts and at login | empty |
 | `OPEN_READ_ACCESS` | Every signed-in account reads every session | `false` |
+| `PUBLIC_DEMO` | Visitors without an account open the dashboard and read simulated data | `false` |
 | `IA_ENGINE` | Summary engine: `rules`, `ollama` or `huggingface` | `rules` |
 | `RADIATION_API_KEY` | NASA DONKI key for space-weather context (`RADATION_API_KEY` is also accepted) | empty |
 | `TELEMETRY_MAX_BODY_BYTES`, `TELEMETRY_FUTURE_SKEW_SECONDS` | Ingestion body limit and allowed clock skew into the future | `262144`, `300` |
@@ -88,7 +89,7 @@ For PostgreSQL, set `DATABASE_URL` (for example `postgresql://USER:PASSWORD@HOST
 
 ## The dashboard
 
-`/app/` is a single screen served by Django; it needs a signed-in account and uses only the `/api/v1/` routes.
+`/app/` is a single screen served by Django. It needs a signed-in account unless `PUBLIC_DEMO` is on, and uses only the `/api/v1/` routes.
 
 - **Top bar:** session, simulated or hardware source, chart period (6 h, 12 h, 24 h), live state, pause, help.
 - **Summary strip:** one plain-language status and the latest value of each signal with a small trend line.
@@ -106,6 +107,7 @@ There are two kinds of credential, and they never mix: **people** sign in with a
 - **Reading, by default:** an account reads only the sessions an administrator authorized it for (Django Admin, or the session API).
 - **`SIGNUP_DEMO_SESSION`:** new accounts, and existing ones at their next login, are authorized for that one demonstration session.
 - **`OPEN_READ_ACCESS=true`:** every signed-in account reads every session. It is for demonstrations with simulated data and must be turned off before a session holds a real participant's readings.
+- **`PUBLIC_DEMO=true`:** no account is needed to open the dashboard, and no sign-in is offered there. Visitors read **simulated** data only: any request for hardware data answers `403`, and they can change nothing. Staff still sign in through Django Admin. Turn it off before a session holds a real participant's readings.
 - **Writing:** creating, changing and configuring sessions, devices and sensors is staff-only in every mode.
 - **Rate limit:** 10 sign-up attempts per client address per hour, then HTTP 429. The counter lives in each worker's memory.
 - **Not built yet:** email verification and password reset, pending the choice of a mail service.

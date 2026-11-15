@@ -46,6 +46,7 @@ landing/
 | `Models.astro` | Artificial intelligence | The three models, each with an ASCII animation |
 | `SolarSystem.astro` | Solar system | The Sun and eight planets in ASCII |
 | `Footer.astro` | Footer | Logo in ASCII and project links |
+| `Launch.astro` | Opening the app | Full-screen journey past the planets when an "Open the app" link is pressed, then the dashboard opens |
 
 ## How the pieces work
 

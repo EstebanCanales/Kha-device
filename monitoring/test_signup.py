@@ -125,3 +125,56 @@ class OpenReadAccessTests(TestCase):
     def test_open_still_requires_an_account(self):
         self.client.logout()
         self.assertIn(self.client.get("/api/v1/sessions/").status_code, (401, 403))
+
+
+class PublicDemoTests(TestCase):
+    """PUBLIC_DEMO lets visitors without an account open the dashboard and read simulated data, and nothing else."""
+
+    def setUp(self):
+        cache.clear()
+        participant = Participant.objects.create(pseudonym="p-public")
+        self.session = MonitoringSession.objects.create(participant=participant, identifier="session-public", started_at=timezone.now())
+        self.base = f"/api/v1/sessions/{self.session.pk}"
+
+    def test_closed_by_default(self):
+        self.assertRedirects(self.client.get("/app/"), "/accounts/login/?next=/app/", fetch_redirect_response=False)
+        self.assertIn(self.client.get("/api/v1/sessions/").status_code, (401, 403))
+        self.assertIn(self.client.get(f"{self.base}/overview/?source=simulated").status_code, (401, 403))
+        self.assertIn(self.client.post(f"{self.base}/summary/?source=simulated").status_code, (401, 403))
+
+    @override_settings(PUBLIC_DEMO=True, LANDING_URL="https://landing.example/")
+    def test_visitor_opens_the_dashboard_and_reads_simulated_data(self):
+        page = self.client.get("/app/")
+        self.assertEqual(page.status_code, 200)
+        # A way out is always there: the link back to the landing page.
+        self.assertContains(page, 'href="https://landing.example/"')
+        self.assertContains(page, "Volver al inicio")
+        # No sign-in is offered to a visitor: no account block and no login link.
+        self.assertNotContains(page, "accounts/login")
+        self.assertNotContains(page, "accounts/logout")
+        self.assertEqual([s["identifier"] for s in self.client.get("/api/v1/sessions/").json()["results"]], ["session-public"])
+        self.assertEqual(self.client.get(f"{self.base}/overview/?source=simulated").status_code, 200)
+        self.assertEqual(self.client.get(f"{self.base}/measurements/?source=simulated").status_code, 200)
+        self.assertEqual(self.client.post(f"{self.base}/summary/?source=simulated").status_code, 200)
+
+    @override_settings(PUBLIC_DEMO=True)
+    def test_visitor_never_reads_hardware_data(self):
+        for path in ("overview", "analysis", "measurements", "latest"):
+            self.assertEqual(self.client.get(f"{self.base}/{path}/?source=hardware").status_code, 403, path)
+        self.assertEqual(self.client.post(f"{self.base}/summary/?source=hardware").status_code, 403)
+        report = f"{self.base}/report/?source=hardware&observed_from=2026-11-01T00:00:00Z&observed_to=2026-11-02T00:00:00Z"
+        self.assertEqual(self.client.get(report).status_code, 403)
+
+    @override_settings(PUBLIC_DEMO=True)
+    def test_visitor_cannot_write_or_configure_or_ingest(self):
+        self.assertIn(self.client.delete(f"{self.base}/").status_code, (401, 403))
+        self.assertIn(self.client.post("/api/v1/sessions/", {}, content_type="application/json").status_code, (401, 403))
+        self.assertIn(self.client.get("/api/v1/config/devices/").status_code, (401, 403))
+        self.assertEqual(self.client.post("/api/v1/telemetry/batches/", {}, content_type="application/json").status_code, 401)
+
+    @override_settings(PUBLIC_DEMO=True)
+    def test_signed_in_account_still_reads_hardware_when_authorized(self):
+        user = User.objects.create_user("operadora", password="Clave-anterior-2026")
+        self.session.authorized_users.add(user)
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(f"{self.base}/overview/?source=hardware").status_code, 200)

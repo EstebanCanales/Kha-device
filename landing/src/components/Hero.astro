@@ -14,7 +14,7 @@ const appUrl = resolveHref('app', lang, import.meta.env.PUBLIC_APP_URL ?? 'http:
 	<div class="hero__copy">
 		<h1 id="hero-title">Kha-device <span>01</span></h1>
 		<p class="hero__lede">{t.lede}</p>
-		<a class="hero__cta" href={appUrl}>{t.cta} <span aria-hidden="true">-&gt;</span></a>
+		<a class="hero__cta" href={appUrl} data-app-link>{t.cta} <span aria-hidden="true">-&gt;</span></a>
 		<p class="hero__credit">{t.credit}</p>
 	</div>
 </section>

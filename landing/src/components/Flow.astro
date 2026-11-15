@@ -72,7 +72,7 @@ const appUrl = resolveHref('app', lang, import.meta.env.PUBLIC_APP_URL ?? 'http:
 
 	<div class="flow__cta" data-reveal>
 		<p>{t.cta.text}</p>
-		<a class="flow__button" href={appUrl}>{t.cta.button} <span aria-hidden="true">-&gt;</span></a>
+		<a class="flow__button" href={appUrl} data-app-link>{t.cta.button} <span aria-hidden="true">-&gt;</span></a>
 	</div>
 </section>
 

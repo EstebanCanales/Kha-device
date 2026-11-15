@@ -14,18 +14,23 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, NotAuthenticated, ValidationError
+from rest_framework.exceptions import (
+    APIException,
+    NotAuthenticated,
+    PermissionDenied,
+    ValidationError,
+)
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from ia import IAError, describe_engine, run_pipeline
 
-from .access import readable_sessions
+from .access import may_read_source, readable_sessions
 from .analysis import analyze_session, sensor_series
 from .authentication import DeviceAuthentication, DeviceRateThrottle
 from .models import (
@@ -90,9 +95,25 @@ class IsStaff(BasePermission):
 
 class IsStaffOrSessionReader(BasePermission):
     def has_permission(self, request, view):
+        safe = request.method in ("GET", "HEAD", "OPTIONS")
         if not request.user or not request.user.is_authenticated:
-            return False
-        return request.method in ("GET", "HEAD", "OPTIONS") or request.user.is_staff
+            # The public demonstration admits visitors without an account, to read only.
+            return safe and settings.PUBLIC_DEMO
+        return safe or request.user.is_staff
+
+
+class IsReaderOrPublicDemo(BasePermission):
+    """For read-like actions that use POST (the summary stores nothing): any account, or anyone in the public demo."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated) or settings.PUBLIC_DEMO
+
+
+class PublicSummaryThrottle(AnonRateThrottle):
+    """The summary does real work; visitors without an account get a modest allowance per address."""
+
+    rate = "20/min"
+    scope = "public_summary"
 
 
 class ConfigurationViewSet(viewsets.ModelViewSet):
@@ -164,7 +185,14 @@ def _require_source(request):
     source = request.query_params.get("source")
     if source not in Device.Source.values:
         raise ValidationError({"source": "Choose hardware or simulated explicitly."})
+    _guard_source(request, source)
     return source
+
+
+def _guard_source(request, source):
+    """Readings from real instruments are never served to a visitor without an account."""
+    if not may_read_source(request.user, source):
+        raise PermissionDenied("Sign in to read hardware data.")
 
 
 def _history_filters(request, session):
@@ -260,6 +288,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         query = ReportQuerySerializer(data=request.query_params.dict())
         query.is_valid(raise_exception=True)
         options = dict(query.validated_data)
+        _guard_source(request, options["source"])
         output = options.pop("output")
         report = build_report(user=request.user, session_id=session.pk, **options)
         if output == "text":
@@ -336,7 +365,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         parameters=[OpenApiParameter("source", str, required=True, enum=Device.Source.values)],
         request=None, responses=dict,
     )
-    @action(detail=True, methods=["post"], permission_classes=(IsAuthenticated,))
+    @action(detail=True, methods=["post"], permission_classes=(IsReaderOrPublicDemo,), throttle_classes=(PublicSummaryThrottle,))
     def summary(self, request, pk=None):
         """Run the specialists and the synthesis. Readers of the session may call it; it stores nothing."""
         analysis = analyze_session(self.get_object(), _require_source(request))

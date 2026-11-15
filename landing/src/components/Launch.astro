@@ -1,0 +1,154 @@
+---
+// Transición al abrir la app: al pulsar cualquier enlace a la app, la pantalla se llena con el viaje por los planetas
+// y después se navega. Sin JavaScript, o con "reducir movimiento", el enlace funciona como un enlace normal.
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].launch;
+---
+
+<div class="launch" id="launch" hidden role="status" aria-live="polite" data-planets={JSON.stringify(t.planets)}>
+	<canvas class="launch__sky" aria-hidden="true"></canvas>
+	<div class="launch__copy">
+		<p class="launch__title">{t.title}</p>
+		<p class="launch__planet" aria-hidden="true">{t.passing} <span data-planet></span></p>
+		<div class="launch__bar" aria-hidden="true"><i data-bar></i></div>
+		<button class="launch__skip" type="button" data-skip>{t.skip}</button>
+	</div>
+</div>
+
+<style>
+	.launch {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: grid;
+		align-items: end;
+		justify-items: start;
+		padding: clamp(1.5rem, 6vh, 4rem) var(--gutter);
+		background: radial-gradient(60rem 36rem at 72% 46%, #0c1430 0%, var(--sky) 70%);
+		opacity: 0;
+		transition: opacity 0.45s ease;
+	}
+
+	.launch.is-on {
+		opacity: 1;
+	}
+
+	.launch__sky {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.launch__copy {
+		position: relative;
+		display: grid;
+		gap: 0.7rem;
+		width: min(24rem, 100%);
+	}
+
+	.launch__title {
+		margin: 0;
+		font-family: var(--display);
+		font-size: clamp(1rem, 2vw, 1.4rem);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--regolith);
+	}
+
+	.launch__planet {
+		margin: 0;
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--soft);
+	}
+
+	.launch__planet span {
+		color: var(--gold);
+	}
+
+	.launch__bar {
+		height: 2px;
+		background: var(--line);
+		overflow: hidden;
+	}
+
+	.launch__bar i {
+		display: block;
+		width: 0;
+		height: 100%;
+		background: var(--regolith);
+	}
+
+	.launch__skip {
+		justify-self: start;
+		padding: 0.45rem 0.8rem;
+		border: 1px solid var(--line);
+		background: none;
+		font: inherit;
+		font-size: 0.7rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--soft);
+		cursor: pointer;
+	}
+
+	.launch__skip:hover {
+		border-color: var(--soft);
+		color: var(--regolith);
+	}
+
+	.launch__skip:focus-visible {
+		outline: 1px solid var(--ocean);
+		outline-offset: 3px;
+	}
+</style>
+
+<script>
+	import { startJourney } from '../scripts/planet-journey';
+
+	const overlay = document.getElementById('launch');
+	const calm = matchMedia('(prefers-reduced-motion: reduce)');
+	const DURATION = 5200; // milisegundos de viaje antes de abrir la app
+	let leaving = false;
+
+	function launch(href: string) {
+		if (!overlay || leaving) return;
+		leaving = true;
+		const canvas = overlay.querySelector('canvas')!;
+		const bar = overlay.querySelector<HTMLElement>('[data-bar]')!;
+		overlay.hidden = false;
+		requestAnimationFrame(() => overlay.classList.add('is-on'));
+		// Tres veces más rápido que en las pantallas de acceso: en cinco segundos pasan varios planetas.
+		const stop = startJourney(canvas, overlay.querySelector('[data-planet]'), 3, JSON.parse(overlay.dataset.planets ?? '{}'));
+		const go = () => { stop(); location.href = href; };
+		overlay.querySelector('[data-skip]')!.addEventListener('click', go, { once: true });
+		addEventListener('keydown', (e) => (e.key === 'Escape' || e.key === 'Enter') && go(), { once: true });
+		const t0 = performance.now();
+		(function tick(now: number) {
+			const k = Math.min(1, (now - t0) / DURATION);
+			bar.style.width = `${k * 100}%`;
+			if (k >= 1) go(); else requestAnimationFrame(tick);
+		})(t0);
+	}
+
+	document.addEventListener('click', (e) => {
+		const link = (e.target as HTMLElement).closest?.<HTMLAnchorElement>('a[data-app-link]');
+		// Con teclas modificadoras (abrir en otra pestaña) o "reducir movimiento", el enlace se comporta normal.
+		if (!link || calm.matches || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+		e.preventDefault();
+		launch(link.href);
+	});
+
+	// Al volver con el botón "atrás", la página puede restaurarse con la transición aún puesta: se retira.
+	addEventListener('pageshow', (e) => {
+		if (!e.persisted || !overlay) return;
+		leaving = false;
+		overlay.classList.remove('is-on');
+		overlay.hidden = true;
+	});
+</script>

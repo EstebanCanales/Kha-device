@@ -5,6 +5,7 @@
 (() => {
 	const canvas = document.getElementById('bg');
 	if (!canvas) return;
+	if (canvas.closest('[hidden]')) return; // la introducción ya se vio en esta visita: no hay nada que dibujar
 	const ctx = canvas.getContext('2d');
 	const calm = matchMedia('(prefers-reduced-motion: reduce)');
 	const caption = document.getElementById('planetName');
@@ -283,13 +284,16 @@
 		ctx.globalAlpha = 1;
 	}
 
-	let raf = 0;
+	let raf = 0, stopped = false;
 	const loop = (now) => { frame(now); raf = requestAnimationFrame(loop); };
 	const start = () => {
+		if (stopped) return;
 		cancelAnimationFrame(raf); size();
 		// Quieto: Saturno a media distancia, con Urano asomando detrás.
 		if (calm.matches) frame((5 + 1.05) * PERIOD * 1000); else raf = requestAnimationFrame(loop);
 	};
+	// Quien muestre esta animación como introducción la detiene al cerrarla, para no dibujar detrás de la página.
+	addEventListener('kha:stop-bg', () => { stopped = true; cancelAnimationFrame(raf); });
 	addEventListener('resize', start);
 	document.addEventListener('visibilitychange', () => (document.hidden ? cancelAnimationFrame(raf) : start()));
 	start();

@@ -32,6 +32,7 @@ Also asked for by the project owner, and recorded in `docs/decisions.md`:
 - **Hosting.** The prototype is deployed on Railway (backend, PostgreSQL, landing). Deploy only when asked.
 - **Self-service sign-up** at `/accounts/signup/`, off outside development unless `ALLOW_SIGNUP` enables it.
 - **Open read access** (`OPEN_READ_ACCESS`), off by default: every signed-in account reads every session. It is for demonstrations with simulated data and must be off before a session holds a real participant's readings. Writing stays staff-only.
+- **Public demonstration** (`PUBLIC_DEMO`), off by default: visitors without an account open the dashboard and read simulated data only; hardware data and every write still require authentication.
 - **Bilingual landing page**, English at `/` and Spanish at `/es/`, with the presentation video.
 
 The limits of this file still apply to all of them. Start with `docs/architecture.md` for how the parts fit together and `docs/README.md` for the list of documents.

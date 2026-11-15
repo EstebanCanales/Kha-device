@@ -78,3 +78,20 @@ makes every signed-in account a reader of every session; it is set in the Railwa
 everywhere else, where per-session authorization still applies. It only widens reading: sessions, devices and
 configuration remain staff-only to change. The hosted database holds simulated data only. This setting must be
 turned off before any session stores a real participant's readings.
+
+
+## Public demonstration without login (2026-11-15)
+
+The project owner asked to remove the login for viewing the app and to show an animation with the planets instead.
+`PUBLIC_DEMO=true` admits visitors without an account: `/app/` opens the dashboard directly, with no sign-in
+offered. The planet animation lives on the landing page: pressing any "Open the app" link plays a five-second
+journey past the planets and then opens the dashboard (`landing/src/components/Launch.astro`). This widens `AGENTS.md`'s rule that queries need authentication, so it is narrow on purpose:
+
+- Off by default; set only in the hosted deployment, whose database holds simulated data.
+- Visitors read **simulated** data only. Any request for hardware data answers `403`, whatever the route.
+- Visitors change nothing: sessions, configuration and ingestion keep their own authentication.
+- The summary action, which does real work, is limited to 20 requests per minute per address for visitors.
+- The dashboard shows no account block and no login link to a visitor. The login and sign-up pages still exist
+  but nothing links to them; staff use Django Admin. Set `ALLOW_SIGNUP=false` in the hosted deployment.
+
+It must be turned off before any session stores a real participant's readings.

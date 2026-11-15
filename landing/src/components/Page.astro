@@ -8,6 +8,7 @@ import Footer from './Footer.astro';
 import Hero from './Hero.astro';
 import Iss from './Iss.astro';
 import LangSwitch from './LangSwitch.astro';
+import Launch from './Launch.astro';
 import Models from './Models.astro';
 import SolarSystem from './SolarSystem.astro';
 import Video from './Video.astro';
@@ -28,6 +29,7 @@ const { lang } = Astro.props as { lang: Lang };
 		<SolarSystem lang={lang} />
 	</main>
 	<Footer lang={lang} />
+	<Launch lang={lang} />
 </Layout>
 
 <script>

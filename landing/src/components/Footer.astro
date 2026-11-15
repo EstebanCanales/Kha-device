@@ -20,7 +20,7 @@ const groups = t.groups.map((g) => ({ ...g, links: g.links.map(([label, target])
 					<ul>
 						{group.links.map(([label, href]) => (
 							<li>
-								<a href={href} rel={href.startsWith('http') ? 'noreferrer' : undefined}>
+								<a href={href} rel={href.startsWith('http') ? 'noreferrer' : undefined} data-app-link={href.startsWith(appUrl) ? '' : undefined}>
 									{label}
 								</a>
 							</li>

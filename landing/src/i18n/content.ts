@@ -14,10 +14,16 @@ const es = {
 		description: 'Datos médicos y datos espaciales, analizados juntos.',
 	},
 	langSwitch: { label: 'Idioma', es: 'Español', en: 'English' },
+	launch: {
+		title: 'Abriendo la app',
+		passing: 'Pasando por',
+		skip: 'Saltar',
+		planets: { Mercurio: 'Mercurio', Venus: 'Venus', Tierra: 'Tierra', Marte: 'Marte', Júpiter: 'Júpiter', Saturno: 'Saturno', Urano: 'Urano', Neptuno: 'Neptuno' },
+	},
 	hero: {
 		lede: 'Datos médicos y datos espaciales, analizados juntos.',
 		cta: 'Entrar a la app',
-		credit: 'Earthrise · Apolo 8 · 24 dic 1968 · redibujada en ASCII',
+		credit: 'Earthrise · Apolo 8 · 24 dic 1968',
 	},
 	video: {
 		label: 'Video de Kha-device 01',
@@ -46,7 +52,7 @@ const es = {
 	iss: {
 		title: 'Tecnología',
 		body: 'Así vamos a construir Kha-device 01: dos dispositivos miden y tres modelos de lenguaje analizan. Dos especialistas, cada uno en lo suyo, y un tercero que resume.',
-		credit: 'Estación Espacial Internacional · redibujada en ASCII',
+		credit: 'Estación Espacial Internacional',
 	},
 	devices: {
 		title: 'Dispositivos',
@@ -292,10 +298,16 @@ const en: Content = {
 		description: 'Medical data and space data, analysed together.',
 	},
 	langSwitch: { label: 'Language', es: 'Español', en: 'English' },
+	launch: {
+		title: 'Opening the app',
+		passing: 'Passing',
+		skip: 'Skip',
+		planets: { Mercurio: 'Mercury', Venus: 'Venus', Tierra: 'Earth', Marte: 'Mars', Júpiter: 'Jupiter', Saturno: 'Saturn', Urano: 'Uranus', Neptuno: 'Neptune' },
+	},
 	hero: {
 		lede: 'Medical data and space data, analysed together.',
 		cta: 'Open the app',
-		credit: 'Earthrise · Apollo 8 · 24 Dec 1968 · redrawn in ASCII',
+		credit: 'Earthrise · Apollo 8 · 24 Dec 1968',
 	},
 	video: {
 		label: 'Kha-device 01 video',
@@ -324,7 +336,7 @@ const en: Content = {
 	iss: {
 		title: 'Technology',
 		body: 'This is how we will build Kha-device 01: two devices measure and three language models analyse. Two specialists, each at their own task, and a third that summarises.',
-		credit: 'International Space Station · redrawn in ASCII',
+		credit: 'International Space Station',
 	},
 	devices: {
 		title: 'Devices',

@@ -187,6 +187,11 @@
 			.kpi b { font-size: 1.05rem; }
 		}
 
+		a.btn { color: inherit; text-decoration: none; }
+		.btn.back { display: inline-flex; align-items: center; gap: .4rem; }
+		/* Sin cuenta solo se leen datos simulados: no se ofrece el origen "Hardware". */
+		body[data-guest] [data-source="hardware"] { display: none; }
+
 		/* Pantallas pequeñas: el tablero se apila y la página vuelve a desplazarse */
 		@media (min-width: 1500px) { .brand__text em { display: block; } }
 		@media (max-width: 1180px) {
@@ -202,7 +207,7 @@
 		@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 	</style>
 </head>
-<body>
+<body{% if request.user.is_authenticated %} data-sign-in="{% url 'login' %}?next=/app/"{% else %} data-guest{% endif %}>
 	<div class="app">
 	<header class="bar">
 		<a class="brand" href="/app/"><img class="brand__logo" src="{% static 'monitoring/klaskha.png' %}" alt="Klaskha" width="40" height="40" /><span class="brand__text"><b>Kha-device <small>01</small></b><em>Monitoreo de astronauta</em></span></a>
@@ -222,10 +227,14 @@
 		<span class="live" id="live" data-state="idle" role="status"><i></i><span id="liveText">Conectando…</span></span>
 		<button class="btn ghost" id="pause" type="button">Pausar</button>
 		<button class="btn ghost" id="helpBtn" type="button">Ayuda</button>
+		<!-- Salida: vuelve a la página de presentación. Visible siempre, con o sin cuenta. -->
+		<a class="btn back" href="{{ landing_url }}"><span aria-hidden="true">←</span> Volver al inicio</a>
+		{% if request.user.is_authenticated %}
 		<div class="who">
 			<span class="who__name"><i aria-hidden="true">{{ request.user.get_username|slice:":1"|upper }}</i>{{ request.user.get_username }}</span>
 			<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn" type="submit">Salir</button></form>
 		</div>
+		{% endif %}
 	</header>
 
 	<main class="board">
@@ -337,6 +346,7 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 			rate_up: ['▲', 'Acumula más rápido que al inicio', 'change'], insufficient_data: ['○', 'Aún pocos datos', ''],
 		};
 		const REFRESH_MS = 15000;
+		const SIGN_IN = document.body.dataset.signIn;
 		const ZONE = 3; // desviaciones: el mismo umbral que usa el análisis
 		let source = 'simulated', range = 1440, timer = 0, paused = false, busy = false, lastKey = '', last = null, ia = null;
 
@@ -365,7 +375,10 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 				throw new Error('No se pudo conectar con el servidor. Comprueba que el backend esté en marcha (uv run python manage.py runserver) y que esta página se abra desde su misma dirección.');
 			}
 			if (response.status === 401 || response.status === 403) {
-				location.href = '/accounts/login/?next=/app/';
+				// Con cuenta, es que la sesión caducó: se vuelve a entrar. Sin cuenta (demostración pública) no hay
+				// a dónde enviar a nadie: se explica y la página sigue donde está.
+				if (document.body.hasAttribute('data-guest')) throw new Error('Esta vista pública solo muestra datos simulados.');
+				location.href = SIGN_IN;
 				throw new Error('Tu sesión terminó. Entra de nuevo.');
 			}
 			if (!response.ok) {
@@ -770,6 +783,7 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 	$('helpBtn').addEventListener('click', () => $('help').showModal());
 	$('helpClose').addEventListener('click', () => $('help').close());
 	$('help').addEventListener('click', (e) => { if (e.target === $('help')) $('help').close(); });
+
 </script>
 {% endverbatim %}
 </body>

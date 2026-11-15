@@ -169,6 +169,10 @@ SIGNUP_DEMO_SESSION = os.getenv('SIGNUP_DEMO_SESSION', '')
 # On: every signed-in account reads every session. For demonstrations with simulated data only; turn it off
 # before a session holds a real participant's readings. Writing stays staff-only either way.
 OPEN_READ_ACCESS = os.getenv('OPEN_READ_ACCESS', 'false').lower() == 'true'
+# Public demonstration. On: anyone, without an account, may open the dashboard and read SIMULATED data from
+# every session. Anonymous visitors can never read hardware data or change anything. Off by default; it must
+# stay off once a session holds a real participant's readings.
+PUBLIC_DEMO = os.getenv('PUBLIC_DEMO', 'false').lower() == 'true'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/app/'
 # Signing out goes back to the public landing page (a different site in development).
