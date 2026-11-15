@@ -31,6 +31,12 @@ const t = content[lang].launch;
 		transition: opacity 0.45s ease;
 	}
 
+	/* `display: grid` de arriba anula el atributo `hidden`: sin esta regla, la capa invisible cubre la página
+	   entera y se queda con todos los clics. */
+	.launch[hidden] {
+		display: none;
+	}
+
 	.launch.is-on {
 		opacity: 1;
 	}
