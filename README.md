@@ -182,6 +182,7 @@ Operators can create their own account at `/accounts/signup/` (linked from the l
 
 - `ALLOW_SIGNUP` switches it on or off. It defaults to on when `DJANGO_DEBUG=true` and to off otherwise, so a deployment must enable it explicitly.
 - A new account is non-staff and reads nothing: an administrator authorizes it for sessions in Django Admin (least privilege).
+- `OPEN_READ_ACCESS=true` lets every signed-in account read every session. It is off by default and is meant for demonstrations with simulated data; turn it off before a session holds a real participant's readings. Creating, changing and configuring stay staff-only.
 - `SIGNUP_DEMO_SESSION` (a session identifier, empty by default) pre-authorizes new accounts for that one demonstration session so an evaluator sees data immediately.
 - Attempts are limited to 10 per client address per hour (HTTP 429 afterwards). The counter lives in the process cache, so it is per worker; use a shared cache in a multi-process deployment.
 - Passwords go through Django's validators (minimum length, common and numeric-only passwords). There is no email verification or password reset yet; that is pending until a mail service is chosen.

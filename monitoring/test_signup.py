@@ -95,3 +95,33 @@ class SignUpDemoAccessTests(TestCase):
         user = User.objects.create_user("cerrada", password="Clave-anterior-2026")
         self.client.post("/accounts/login/", {"username": "cerrada", "password": "Clave-anterior-2026"})
         self.assertFalse(self.demo.authorized_users.filter(pk=user.pk).exists())
+
+
+class OpenReadAccessTests(TestCase):
+    """OPEN_READ_ACCESS lets every signed-in account read every session; writing stays staff-only."""
+
+    def setUp(self):
+        participant = Participant.objects.create(pseudonym="p-open")
+        self.session = MonitoringSession.objects.create(participant=participant, identifier="session-open", started_at=timezone.now())
+        self.user = User.objects.create_user("lectora", password="Clave-anterior-2026")
+        self.client.force_login(self.user)
+
+    def test_closed_by_default(self):
+        self.assertEqual(self.client.get("/api/v1/sessions/").json()["results"], [])
+        self.assertEqual(self.client.get(f"/api/v1/sessions/{self.session.pk}/overview/?source=simulated").status_code, 404)
+
+    @override_settings(OPEN_READ_ACCESS=True)
+    def test_open_lets_any_account_read_every_session(self):
+        listed = [s["identifier"] for s in self.client.get("/api/v1/sessions/").json()["results"]]
+        self.assertEqual(listed, ["session-open"])
+        self.assertEqual(self.client.get(f"/api/v1/sessions/{self.session.pk}/overview/?source=simulated").status_code, 200)
+
+    @override_settings(OPEN_READ_ACCESS=True)
+    def test_open_does_not_allow_writing_or_configuration(self):
+        self.assertEqual(self.client.delete(f"/api/v1/sessions/{self.session.pk}/").status_code, 403)
+        self.assertEqual(self.client.get("/api/v1/config/devices/").status_code, 403)
+
+    @override_settings(OPEN_READ_ACCESS=True)
+    def test_open_still_requires_an_account(self):
+        self.client.logout()
+        self.assertIn(self.client.get("/api/v1/sessions/").status_code, (401, 403))

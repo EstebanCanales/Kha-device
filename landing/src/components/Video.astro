@@ -1,6 +1,5 @@
 ---
-// Hueco para el video. Para integrarlo: pon el <video> o el <iframe> dentro de
-// `.video__frame` (ocupa todo el marco 16:9) y quita el <p class="video__pending">.
+// Video de presentación, en un marco 16:9. Los archivos están en /public: kha-device.mp4 y su portada.
 import { content, type Lang } from '../i18n/content';
 
 const { lang } = Astro.props as { lang: Lang };
@@ -9,7 +8,11 @@ const t = content[lang].video;
 
 <section class="video" id="video" aria-label={t.label}>
 	<div class="video__frame" data-video data-reveal>
-		<p class="video__pending">{t.pending}</p>
+		<!-- 1080p para la web (el original en 4K no se publica). `preload="metadata"`: no descarga el video hasta que se pide. -->
+		<video controls playsinline preload="metadata" poster="/kha-device-poster.jpg" aria-label={t.label}>
+			<source src="/kha-device.mp4" type="video/mp4" />
+			<a href="/kha-device.mp4">{t.label}</a>
+		</video>
 	</div>
 </section>
 
@@ -36,6 +39,7 @@ const t = content[lang].video;
 		height: 100%;
 		border: 0;
 		object-fit: cover;
+		background: #000;
 	}
 
 	.video__pending {

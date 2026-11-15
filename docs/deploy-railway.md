@@ -28,6 +28,7 @@ Create the `backend` service from the repository root and the `landing` service 
 | `LANDING_URL` | the public URL of the `landing` service, with a trailing slash |
 | `ALLOW_SIGNUP` | `true` only if self-service accounts should be open |
 | `SIGNUP_DEMO_SESSION` | `session-kha-001` to let new accounts read the demo session |
+| `OPEN_READ_ACCESS` | `true` so every account reads every session (simulated data only) |
 | `IA_ENGINE` | `rules` (Railway has no local Ollama; the language models stay a local option) |
 | `RADIATION_API_KEY` | NASA DONKI key, optional |
 

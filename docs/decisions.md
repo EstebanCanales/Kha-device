@@ -52,3 +52,12 @@ Estas decisiones se tomaron a petición expresa del proyecto y amplían lo que `
 - RBE records are external environmental events, not worn-dosimeter measurements. Preserve original event fields and retrieval provenance separately from hardware/simulated telemetry; do not derive Gy, Sv, rates, counters, or risk from events.
 - Provide a bounded client, `scripts/nasa_radiation.py`, and an authorized session `radiation-context` read action. No credentials or participant data appear in outputs/upstream queries, respectively.
 - Cache only successful results for 15 minutes; retain `fetched_at`. Explicitly report upstream failures instead of fabricating readings or silently falling back. Database persistence, spatial correlation, and incorporation into combined reports are outside this change.
+
+
+## Open read access for the hosted demonstration (2026-11-15)
+
+The project owner asked that every user be able to see everything in the hosted prototype. `OPEN_READ_ACCESS=true`
+makes every signed-in account a reader of every session; it is set in the Railway deployment and off by default
+everywhere else, where per-session authorization still applies. It only widens reading: sessions, devices and
+configuration remain staff-only to change. The hosted database holds simulated data only. This setting must be
+turned off before any session stores a real participant's readings.

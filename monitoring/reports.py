@@ -5,8 +5,9 @@ import json
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
+from .access import readable_sessions
 from .dosimeter_profile import CHANNELS
-from .models import Measurement, Metric, MonitoringSession
+from .models import Measurement, Metric
 from .serializers import MeasurementSerializer
 
 MAX_REPORT_READINGS = 1000
@@ -33,12 +34,7 @@ REPORT_NOTES = [
 
 def build_report(*, user, session_id, source, observed_from, observed_to):
     """Authorize here as well as at the HTTP layer for future internal consumers."""
-    sessions = MonitoringSession.objects.all()
-    if not user or not user.is_authenticated or not user.is_active:
-        raise NotFound()
-    if not user.is_staff:
-        sessions = sessions.filter(authorized_users=user)
-    session = sessions.filter(pk=session_id).first()
+    session = readable_sessions(user).filter(pk=session_id).first()
     if session is None:
         raise NotFound()
     # Validate internal callers with the same contract used by the endpoint.

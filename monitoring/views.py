@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 
 from ia import IAError, describe_engine, run_pipeline
 
+from .access import readable_sessions
 from .analysis import analyze_session, sensor_series
 from .authentication import DeviceAuthentication, DeviceRateThrottle
 from .models import (
@@ -211,11 +212,7 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = MonitoringSession.objects.select_related("participant").order_by("-started_at", "id")
-        if not self.request.user.is_authenticated:
-            return queryset.none()
-        if self.request.user.is_staff:
-            return queryset
-        return queryset.filter(authorized_users=self.request.user)
+        return readable_sessions(self.request.user, queryset)
 
     def perform_create(self, serializer):
         serializer.save()

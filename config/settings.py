@@ -165,6 +165,10 @@ STORAGES = {
 # administrator authorizes it for a session; SIGNUP_DEMO_SESSION optionally pre-authorizes one demonstration session.
 ALLOW_SIGNUP = os.getenv('ALLOW_SIGNUP', 'true' if DEBUG else 'false').lower() == 'true'
 SIGNUP_DEMO_SESSION = os.getenv('SIGNUP_DEMO_SESSION', '')
+# Read access. Off: an account reads only the sessions it was authorized for (least privilege, the default).
+# On: every signed-in account reads every session. For demonstrations with simulated data only; turn it off
+# before a session holds a real participant's readings. Writing stays staff-only either way.
+OPEN_READ_ACCESS = os.getenv('OPEN_READ_ACCESS', 'false').lower() == 'true'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/app/'
 # Signing out goes back to the public landing page (a different site in development).
