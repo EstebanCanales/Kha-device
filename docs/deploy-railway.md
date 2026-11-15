@@ -1,5 +1,7 @@
 # Deploying to Railway
 
+The prototype is live at <https://kha-device.up.railway.app> (landing) and <https://kha-device-app.up.railway.app> (backend and dashboard). This guide records how it is set up and how to deploy a change.
+
 Three services in one Railway project. Nothing here is certified for clinical or flight use; it is the same prototype, hosted.
 
 | Service | Source | What it runs |
@@ -16,7 +18,16 @@ railway init                      # create the project
 railway add --database postgres   # adds the Postgres service
 ```
 
-Create the `backend` service from the repository root and the `landing` service with **Root Directory** set to `landing`.
+Then add the two application services and give each a public domain:
+
+```bash
+railway add --service backend --json
+railway add --service landing --json
+railway domain --service backend --json
+railway domain --service landing --json
+```
+
+Both are deployed from this repository with `railway up` (see "Deploying"); the landing page is uploaded from the `landing/` folder with `--path-as-root`, so no root-directory setting is needed. A domain can be renamed with `railway domain update <old>.up.railway.app --domain <new> --service <service>`.
 
 ### Backend variables
 
@@ -71,16 +82,38 @@ the release and the previous one keeps serving.
 
 ## Demonstration data
 
-After the first deploy, load the simulated session once (it prints the demo user's password a single time):
+The database is reachable only from inside the project's private network, so data is loaded from the backend itself. The hosted session was loaded once by adding the command to the pre-deploy step for one release and removing it afterwards:
 
 ```bash
-railway ssh --service backend -- python manage.py demo_kha
+python manage.py migrate --noinput && python manage.py demo_kha --no-user
 ```
 
-Simulated devices report one sample every 30 minutes; the default window is 24 hours.
+`--no-user` creates no account, so no generated password reaches the deployment logs; people use accounts created from the sign-up page. The command is safe to repeat: with data already present it adds nothing. Simulated devices report one sample every 30 minutes; the default window is 24 hours.
+
+With an SSH key registered in the Railway account (`railway ssh keys add`), the same command can be run directly:
+
+```bash
+railway ssh --service backend --environment production -- python manage.py demo_kha --no-user
+```
+
+## Checking a deployment
+
+A release is good when all of these hold:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://kha-device-app.up.railway.app/healthz/          # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://kha-device-app.up.railway.app/readyz/           # 200: the database answers
+curl -s -o /dev/null -w "%{http_code}\n" https://kha-device-app.up.railway.app/accounts/login/   # 200: templates and static files load
+curl -s -o /dev/null -w "%{http_code}\n" https://kha-device.up.railway.app/                      # 200
+railway deployment list --service backend --environment production --json                        # newest status is SUCCESS
+```
+
+`SUCCESS` alone is not enough: the first release reported it while the site answered 502, because a migration had failed.
 
 ## Limits to know
 
 - The sign-up rate limit and the NASA cache live in each worker's memory. With two gunicorn workers the limit is per worker.
 - Readings already stored in a local `db.sqlite3` are not copied automatically.
+- Renaming a Railway domain retires the old address at once; update `LANDING_URL` on the backend and `PUBLIC_APP_URL` on the landing page, then rebuild the landing page.
+- The summary uses the `rules` engine; local language models do not run on Railway.
 - Retention, backups and a custom domain are pending decisions.

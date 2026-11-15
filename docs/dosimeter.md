@@ -1,5 +1,7 @@
 # Dedicated dosimeter simulator
 
+Part of the [documentation index](README.md). For how the dosimeter fits the whole system, see [architecture.md](architecture.md).
+
 This Python simulator implements the requested acquisition workflow against the existing authenticated batch API. It does not operate physical DIS chambers or FRAM. Hardware model, controller, calibration, chamber count, FRAM interface/capacity, clock, and vendor protocol remain unknown.
 
 ## Values recorded

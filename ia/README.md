@@ -1,5 +1,7 @@
 # Módulo de inteligencia artificial
 
+Convierte el análisis de una sesión en tres textos breves: salud, espacio y una síntesis. No diagnostica ni recomienda tratamientos. Cómo encaja con el resto del sistema: [docs/architecture.md](../docs/architecture.md).
+
 ## Objetivo
 
 Construir un módulo Python dentro del monolito que analice información médica y datos espaciales mediante dos modelos especializados. Un tercer modelo combinará ambos análisis y generará un resumen.
@@ -9,7 +11,8 @@ Construir un módulo Python dentro del monolito que analice información médica
 - **Implementado y probado:** contratos, entradas desde el análisis del backend, motor determinista `rules`, orquestación de las tres etapas, interfaz interna (`ia.run_pipeline`), el endpoint `POST /api/v1/sessions/{uuid}/summary/` y pruebas unitarias con modelos simulados.
 - **Motor `ollama`:** los tres modelos servidos por un Ollama local. `ia/ollama/setup.sh` los prepara desde Hugging Face. Ver "Uso con Ollama".
 - **Motor `huggingface`:** los mismos modelos con transformers y PEFT (carga diferida y secuencial). Sin probar con los pesos reales.
-- **Pendiente:** evaluación de calidad, idioma y alucinaciones; mediciones de memoria y latencia; revisión médica; ejecutar fuera de la petición HTTP.
+- **En el sitio alojado:** se usa el motor `rules`. En Railway no hay un Ollama local, así que los modelos de lenguaje siguen siendo una opción para ejecutar en una máquina propia.
+- **Pendiente:** evaluación de calidad, idioma y alucinaciones más allá de `ia.evaluation`; mediciones de memoria y latencia; revisión médica; ejecutar fuera de la petición HTTP.
 
 ## Uso
 

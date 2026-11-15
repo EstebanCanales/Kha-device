@@ -1,5 +1,7 @@
 # Combined telemetry reports
 
+Part of the [documentation index](README.md). Reports only read stored data; who may read a session is explained in [architecture.md](architecture.md#queries-how-a-reading-gets-out).
+
 `GET /api/v1/sessions/{session_uuid}/report/` builds one report from the stored vital-sign and dosimeter readings assigned to that session. It returns one `application/json` document by default with a `Content-Disposition` attachment filename of `telemetry-report-{session_uuid}.json`. Readable text remains available with `output=text`. Reports are generated on demand; nothing is sent to an AI model or external service, and no inference runs.
 
 ## Prepare both streams

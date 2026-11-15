@@ -35,6 +35,7 @@ Use `--failfast` to stop at the first failure. The process returns a nonzero exi
 | `test_sessions.py` | Session CRUD/access isolation, Basic authentication, history filters/pagination, observation ordering, latest readings, read-only routes |
 | `test_vital_signs.py` | Five-metric adapter, duplicate/conflict behavior, missing and invalid scenarios |
 | `test_nasa_radiation.py` | NASA client validation, secret-safe errors, authorization, caching, throttling, and separation from telemetry |
+| `test_database_config.py` | Database settings from the environment: hosted PostgreSQL URL, separate `DB_*` variables, SQLite default, and errors that never echo the password |
 | `test_dosimeter.py` | Dosimeter persistence, reset epochs, status/unit validation, durable offline replay |
 | `test_reports.py` | Both data streams, three category tags, JSON/text, nulls, authorization, source separation, report bounds/limits and schema |
 | `test_operations.py` | Health/readiness, simulated database outage, complete API schema inventory, Admin access and telemetry immutability |
@@ -55,3 +56,30 @@ uv run --locked python manage.py test monitoring.tests
 ```
 
 Django needs permission to create a separate test database. This suite tests sequential retry idempotency and database constraints; simultaneous PostgreSQL ingestion races and load behavior remain unverified. Tests do not replace hardware/FRAM validation or clinical validation.
+
+
+## Tests outside this folder
+
+Three more modules run with the plain `manage.py test` command:
+
+| File | Coverage |
+| --- | --- |
+| `monitoring/test_kha.py` | Kha-device 01 profiles, session analysis, the `overview`, `analysis` and `summary` routes, the dashboard shell, `demo_kha`, and NASA context in the summary |
+| `monitoring/test_signup.py` | Sign-up, its switch and rate limit, the demonstration-session grant at sign-up and login, and `OPEN_READ_ACCESS` |
+| `ia/tests.py` | The summary module with simulated engines: contracts, inputs, orchestration, and the guards against invented figures |
+
+Run everything (148 tests):
+
+```bash
+uv run python manage.py test
+```
+
+## Running against PostgreSQL
+
+The default database for tests is SQLite. To check constraints and migrations on PostgreSQL, point `DATABASE_URL` at a server where the account may create databases:
+
+```bash
+DATABASE_URL="postgresql://USER@127.0.0.1:5432/DBNAME" uv run python manage.py test
+```
+
+Django creates and removes a separate `test_DBNAME` database. The full suite and all migrations passed this way on PostgreSQL 14 on 2026-11-15.

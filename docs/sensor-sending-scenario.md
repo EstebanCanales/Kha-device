@@ -1,5 +1,7 @@
 # Normal scenario: simulated watch sending readings
 
+Part of the [documentation index](README.md). The newer two-device demo is in the [main README](../README.md#run-it-locally); the general ingestion rules are in [telemetry-contract.md](telemetry-contract.md).
+
 This example shows one monitoring session with the `vital_signs.py` simulator. It uses the same HTTP endpoint a future adapter could call. It does not connect to an ADI Study Watch or read Wavetool files.
 
 ## 1. Prepare the monitoring session

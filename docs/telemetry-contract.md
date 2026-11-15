@@ -1,5 +1,7 @@
 # Contrato de telemetría v1
 
+Qué debe enviar un dispositivo, qué acepta el servidor y qué responde. Para una explicación general del recorrido de los datos, ver [architecture.md](architecture.md).
+
 El transporte inicial es HTTP/JSON. Una credencial de dispositivo se presenta como `Authorization: Device <credential_uuid>:<secret>` y solo permite `POST /api/v1/telemetry/batches/`. La credencial se genera con `provision_device_token`, se guarda con el hasher de contraseñas de Django y se puede revocar individualmente.
 
 ## Identidades y estructura
@@ -61,7 +63,7 @@ Respuesta con inserciones (`201`) o solo duplicados (`200`):
 
 ## Consulta
 
-`GET /api/v1/sessions/` lista solo sesiones autorizadas para la cuenta humana; el personal administrativo puede ver todas. `GET /api/v1/sessions/{uuid}/measurements/` devuelve historial paginado (100 filas por defecto, máximo 500 por página) en orden estable de `observed_at` e ID. `GET /api/v1/sessions/{uuid}/latest/` devuelve la última lectura por sensor, métrica, unidad y época, según `observed_at`; incluye su tiempo y no declara que siga vigente.
+`GET /api/v1/sessions/` lista solo sesiones autorizadas para la cuenta humana; el personal administrativo puede ver todas. Con `OPEN_READ_ACCESS=true`, pensado para demostraciones con datos simulados, cualquier cuenta con sesión iniciada puede leer todas; modificar sigue reservado al personal. `GET /api/v1/sessions/{uuid}/measurements/` devuelve historial paginado (100 filas por defecto, máximo 500 por página) en orden estable de `observed_at` e ID. `GET /api/v1/sessions/{uuid}/latest/` devuelve la última lectura por sensor, métrica, unidad y época, según `observed_at`; incluye su tiempo y no declara que siga vigente.
 
 `GET /api/v1/sessions/{uuid}/analysis/?source=…` devuelve el análisis descriptivo de la sesión (línea base personal, cambios, contadores de dosis por cámara y pausas) y `POST /api/v1/sessions/{uuid}/summary/?source=…` ejecuta el módulo de IA sobre ese análisis y responde `503` si el motor no está disponible. Ninguna ruta guarda resultados.
 

@@ -31,9 +31,25 @@ Configuration CRUD status expectations: create `201`, reads/updates `200`, delet
 ## Current limits of the review
 
 - The automated tests cover application routes and selected Admin security behavior, not every framework-generated Admin form or every possible input combination.
-- The local suite uses SQLite. PostgreSQL locking/concurrent retries, live HTTP transport, deployment HTTPS/proxy behavior, throughput, and hardware integrations are not established by these tests.
+- The local suite uses SQLite by default. On 2026-11-15 the full suite and all migrations were also run against PostgreSQL 14 and passed; that run exercised the database constraints, not load or truly parallel clients. Throughput and hardware integrations are not established by these tests.
 - History range limits apply when both optional bounds are supplied; latest currently scans matching rows before paginating. Configuration viewsets declare pagination but have no default page size, so their lists currently return all rows. These scalability behaviors were inspected and left unchanged by this testing task.
 - Health/readiness are plain Django views and currently also accept methods other than GET; tests document the intended GET checks without introducing a routing change.
 - Throttling uses the existing process-local cache. Tests isolate and exercise it; they do not establish multi-process limits.
 
 Run instructions and individual test commands: [monitoring/tests/README.md](../monitoring/tests/README.md).
+
+
+## Added after this review
+
+These routes were added later and are covered by `monitoring/test_kha.py`, `monitoring/test_signup.py` and `monitoring/tests/test_nasa_radiation.py`:
+
+| Route | Methods | Access | Main behavior tested |
+| --- | --- | --- | --- |
+| `/api/v1/sessions/{id}/overview/` | GET | Readers | One response with analysis, series and engine; downsampling; empty sessions; authorization and required `source` |
+| `/api/v1/sessions/{id}/analysis/` | GET | Readers | Baseline shifts, dose counters per chamber, gaps, insufficient data |
+| `/api/v1/sessions/{id}/summary/` | POST | Readers | Runs the summary module; `503` when the engine is unavailable; stores nothing |
+| `/api/v1/sessions/{id}/radiation-context/` | GET | Readers | NASA DONKI events, caching, throttling, missing key |
+| `/accounts/signup/` | GET, POST | Public while enabled | Account creation, validation, rate limit, `404` when disabled |
+| `/app/` | GET | Signed-in account | Redirect to login when anonymous |
+
+"Readers" are staff, accounts authorized for the session, and every signed-in account when `OPEN_READ_ACCESS` is on. The deployed site was also checked by hand over HTTPS behind the Railway proxy: health checks, login, sign-up, static files, and reading the demonstration session with a new account.

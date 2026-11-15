@@ -1,6 +1,6 @@
 # Decisiones provisionales
 
-- El backend es un monolito Django/DRF. SQLite permite demostración local; `DB_ENGINE=postgresql` usa PostgreSQL con `psycopg`. No se verificó PostgreSQL en este entorno porque no había un servidor disponible.
+- El backend es un monolito Django/DRF. SQLite permite demostración local; PostgreSQL se configura con `DATABASE_URL` o con `DB_ENGINE=postgresql`. Las migraciones y toda la batería de pruebas se ejecutaron contra PostgreSQL 14 el 15 de noviembre de 2026 (ver más abajo).
 - La configuración usa CRUD para participantes, sesiones, dispositivos, sensores, capacidades, asignaciones y épocas de contador. La ingesta crea paquetes y mediciones; el historial es de solo lectura. ECG crudo y resultados derivados continúan como modelos sin API de adquisición o análisis.
 - Las claves primarias de `monitoring` son UUID v4. Los identificadores legibles se mantienen para contratos de dispositivo. Los usuarios de Django conservan las claves propias del framework.
 - Cada dispositivo tiene credenciales revocables y verificadores con el hasher de Django. No se almacena el secreto recuperable. La rotación puede emitir una nueva credencial y revocar las anteriores.
@@ -25,7 +25,7 @@ Estas decisiones se tomaron a petición expresa del proyecto y amplían lo que `
 - **IA.** `ia/` es un paquete del monolito, no un servicio. El motor `rules` es determinista y es el predeterminado; el motor `huggingface` carga los tres modelos del README de forma diferida y secuencial (uno a la vez salvo `IA_KEEP_LOADED=true`). Los cambios marcados por el análisis y los datos faltantes calculados nunca dependen de lo que el modelo devuelva: se conservan aunque falle el JSON. Las entradas son agregados con seudónimo y los errores no repiten texto de la petición. Está sin probar con los pesos reales.
 - **Datos espaciales.** Se asumió que la dosimetría y el contexto de gravedad son la entrada del especialista de astronomía. El modelo LoRA está afinado en astronomía general; su utilidad para dosimetría está por evaluar.
 - **App.** El panel `/app/` lo sirve Django en el mismo origen, con sesión y CSRF de Django, sin CORS. Usa solo rutas `/api/v1/`. La landing enlaza a él con `PUBLIC_APP_URL`.
-- **Un solo `overview`.** El panel pide análisis, series por sensor (últimas 3 horas, hasta 120 puntos, un contador por sensor y época) y el motor de IA activo en una única petición. Antes eran unas once, y si el servidor no respondía el navegador solo decía "Failed to fetch". Ahora los errores de red y de servidor se explican en la pantalla y se conservan los últimos datos.
+- **Un solo `overview`.** El panel pide análisis, series por sensor (últimas 24 horas desde el 15 de noviembre de 2026, antes 3; hasta 120 puntos, un contador por sensor y época) y el motor de IA activo en una única petición. Antes eran unas once, y si el servidor no respondía el navegador solo decía "Failed to fetch". Ahora los errores de red y de servidor se explican en la pantalla y se conservan los últimos datos.
 - **Síntesis que resume.** Cada especialista aporta una frase calculada (`headline`: cuántas señales cambiaron) además de sus detalles. La síntesis del motor `rules` une esas frases y añade una nota de que los cambios coinciden en el tiempo sin implicar causa, solo si ambos especialistas detectaron cambios. Con modelos reales, esas frases calculadas siempre encabezan los hallazgos.
 - **Resumen por `POST`.** Genera texto y no guarda nada; puede tardar minutos con modelos reales y corre dentro de la petición. Un despliegue real necesitará una cola o ejecución en segundo plano, hoy fuera de alcance.
 
@@ -52,6 +52,23 @@ Estas decisiones se tomaron a petición expresa del proyecto y amplían lo que `
 - RBE records are external environmental events, not worn-dosimeter measurements. Preserve original event fields and retrieval provenance separately from hardware/simulated telemetry; do not derive Gy, Sv, rates, counters, or risk from events.
 - Provide a bounded client, `scripts/nasa_radiation.py`, and an authorized session `radiation-context` read action. No credentials or participant data appear in outputs/upstream queries, respectively.
 - Cache only successful results for 15 minutes; retain `fetched_at`. Explicitly report upstream failures instead of fabricating readings or silently falling back. Database persistence, spatial correlation, and incorporation into combined reports are outside this change.
+
+
+## Decisiones del 15 de noviembre de 2026
+
+Tomadas a petición del proyecto durante el alojamiento del prototipo.
+
+- **PostgreSQL verificado.** La migración 0003 convertía claves enteras a UUID alterando la columna. SQLite lo acepta porque reconstruye la tabla; PostgreSQL responde `cannot cast type bigint to uuid`. En PostgreSQL la migración ahora borra y vuelve a crear las tablas, que el paso anterior ya exige vacías, a partir del estado nuevo; en SQLite se comporta igual que antes. Con ese cambio, las migraciones y las pruebas pasan en PostgreSQL 14.
+- **`DATABASE_URL`.** Se añadió para bases PostgreSQL alojadas, sin dependencias nuevas (`config/database.py`). Solo se aceptan URL de PostgreSQL. Las conexiones se reutilizan 60 segundos y se comprueban antes de usarse.
+- **Layerbase descartado.** La base de tipo "sqlite 3" de Layerbase expone SQLite tras el protocolo de PostgreSQL (`pgsqlite`). El backend de PostgreSQL de Django no pudo crear ni su tabla de migraciones. Adaptarlo exigía un backend propio y renunciar a las garantías verificadas con PostgreSQL, así que se usa el PostgreSQL de Railway.
+- **Alojamiento en Railway.** Tres servicios: backend (gunicorn y WhiteNoise), PostgreSQL y landing estática. La base solo es accesible desde la red privada del proyecto. Detrás del proxy se confía en la cabecera `X-Forwarded-Proto`, y solo cuando Railway o `DJANGO_BEHIND_PROXY` lo indican. Los archivos estáticos se recopilan al arrancar porque el paso previo al despliegue corre en otro contenedor.
+- **Ritmo de los datos simulados.** Un dato cada 30 minutos, con una ventana de 24 horas por defecto (48 muestras). Es una elección de simulación, no una frecuencia de hardware confirmada. La ventana de las gráficas pasó de 3 a 24 horas para que el análisis, que necesita 20 lecturas, tenga datos suficientes.
+- **Registro de cuentas.** `/accounts/signup/` crea cuentas sin privilegios. Está apagado fuera de desarrollo salvo que se active. Una cuenta nueva no lee nada por defecto; `SIGNUP_DEMO_SESSION` le concede una sola sesión de demostración, también al iniciar sesión. Hay un límite de 10 intentos por dirección y hora. No hay verificación de correo ni recuperación de contraseña: quedan pendientes de elegir un servicio de correo.
+- **Demostración sin usuario.** `demo_kha --no-user` carga la sesión sin crear cuenta, para que ninguna contraseña generada aparezca en los registros del despliegue.
+- **Landing bilingüe, inglés principal.** El inglés se sirve en `/` y el español en `/es/`. El idioma no cambia según el navegador; solo según lo que la persona eligió en el selector.
+- **Video.** Se publica una copia a 1080p del video de presentación. El original en 4K (91 MB) queda fuera del repositorio.
+- **Nota de visión en la landing.** La sección "What makes us different" describe capacidades futuras (orientación, procedimientos de emergencia). Lleva una nota que aclara que el prototipo actual no diagnostica ni emite alertas médicas, para no afirmar lo que `AGENTS.md` excluye.
+- **Panel sin sesión.** Una cuenta sin sesiones legibles ve una explicación y el panel no pide datos a la API.
 
 
 ## Open read access for the hosted demonstration (2026-11-15)

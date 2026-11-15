@@ -14,6 +14,9 @@ procedencia y validez de cada valor dentro de una transacción antes de guardar.
 - La migración 0003 convierte las claves primarias únicamente si las tablas de
   `monitoring` están vacías. Una instalación con datos existentes necesita una
   migración de datos que remapee claves y relaciones antes de aplicar el cambio.
+  En SQLite altera cada columna; en PostgreSQL, que no puede convertir `bigint`
+  a `uuid`, borra y vuelve a crear las tablas vacías a partir del estado nuevo.
+  El resultado es el mismo esquema en ambos motores.
 - Todas las fechas deben tener zona horaria. `observed_at` procede del emisor;
   `received_at` lo asigna el servidor. Un lote tardío conserva su tiempo original.
 - Los escalares usan `Decimal(30,12)`: hasta 18 cifras enteras y 12 decimales.
