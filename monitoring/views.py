@@ -6,7 +6,7 @@ from io import BytesIO
 from django.conf import settings
 from django.db import IntegrityError, connection
 from django.db.models import ProtectedError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import is_aware
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -17,6 +17,7 @@ from rest_framework.exceptions import APIException, NotAuthenticated, Validation
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import BasePermission
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -33,6 +34,8 @@ from .models import (
     SensorCapability,
     SessionDevice,
 )
+from .report_serializers import CombinedReportSerializer, ReportQuerySerializer
+from .reports import build_report, report_as_text
 from .serializers import (
     BatchInputSerializer,
     BatchOutputSerializer,
@@ -196,6 +199,27 @@ class SessionViewSet(viewsets.ModelViewSet):
             instance.delete()
         except ProtectedError as error:
             raise Conflict() from error
+
+    @extend_schema(
+        parameters=[ReportQuerySerializer],
+        responses={(200, "application/json"): CombinedReportSerializer, (200, "text/plain"): str},
+        description="Single JSON report tagged as vital_signs, body_temperature, and dosimeter. Requires an explicit source and time window. Maximum 1000 readings; narrow the window on 400. No inference is performed.",
+    )
+    @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[], renderer_classes=[JSONRenderer])
+    def report(self, request, pk=None):
+        session = self.get_object()
+        query = ReportQuerySerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        options = dict(query.validated_data)
+        output = options.pop("output")
+        report = build_report(user=request.user, session_id=session.pk, **options)
+        if output == "text":
+            response = HttpResponse(report_as_text(report), content_type="text/plain; charset=utf-8")
+        else:
+            response = Response(report)
+            response["Content-Disposition"] = f'attachment; filename="telemetry-report-{session.pk}.json"'
+        response["Cache-Control"] = "no-store"
+        return response
 
     @extend_schema(
         parameters=[

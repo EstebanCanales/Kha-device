@@ -43,3 +43,7 @@ Los tres son modelos de generación de texto: el formato y la transformación de
 - [ ] Medir memoria, almacenamiento, latencia y opciones de cuantización en el hardware objetivo.
 - [ ] Añadir pruebas unitarias con modelos simulados y pruebas de integración opcionales con modelos reales.
 - [ ] Documentar instalación, configuración y ejecución reales una vez implementadas.
+
+## Entrada de telemetría disponible
+
+El backend ya genera `combined-telemetry-report.v2` con signos vitales y dosimetría de la misma sesión autorizada. Está disponible como JSON o texto mediante `/api/v1/sessions/{uuid}/report/` y mediante `monitoring.reports.build_report` / `report_as_text`. Conserva tiempos, unidades, calidad, procedencia y épocas de contador; indica dominios sin datos. Véase [el contrato y los ejemplos](../docs/combined-reports.md). Esta funcionalidad prepara la entrada; no carga ni ejecuta los modelos propuestos.

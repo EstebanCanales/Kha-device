@@ -19,3 +19,12 @@ Pendiente antes de integrar equipos reales: modelos y fichas técnicas, magnitud
 - Store status as explicitly documented application codes and elapsed times as decimal seconds. DIS state is aggregate until the chamber inventory and protocol are known.
 - Use a durable SQLite desktop journal as a storage adapter stand-in. It is not FRAM hardware support. Preserve records and identities through acknowledgment and replay; retention remains pending.
 - Synthetic cumulative increments are independent fixtures, not inferred from rates. A rate-increase flag compares adjacent valid captures only and has no radiological-risk meaning.
+
+## Combined reports
+
+- Generate bounded JSON/text reports on demand from both acquisition streams within one authorized session and source. No additional database tables, model calls, inference, external delivery, or scheduled jobs.
+- Require explicit start/end timestamps; use half-open windows for adjacent report exports. Reject oversized reports instead of hiding readings from a model through truncation.
+- Preserve per-reading evidence and quality, and group different units, epochs, methods, and profiles separately. No synthetic time alignment or cumulative-dose totals.
+- Internal report consumers must supply an active authorized Django user. Reports omit names/pseudonyms and credentials. Stored report retention and downstream model token budgets remain caller responsibilities.
+
+- Combined report v2 separates `body_temperature` from `vital_signs`, tags every series/reading/latest observation, and returns one JSON attachment by default. Internal circuit temperature remains dosimeter telemetry. Existing data and ingestion contracts do not change.

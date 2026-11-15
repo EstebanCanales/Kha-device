@@ -1,0 +1,778 @@
+{
+  "schema_version": "combined-telemetry-report.v2",
+  "generated_at": "2026-11-14T22:49:32.814134+00:00",
+  "source": "simulated",
+  "session": {
+    "id": "a2ed261f-59b5-4cc7-bf96-87c28940b82a",
+    "participant_id": "637ceb29-e6d4-4625-98b1-8a135c064067",
+    "started_at": "2026-11-12T22:49:30+00:00",
+    "ended_at": null,
+    "gravity_context": "unknown"
+  },
+  "window": {
+    "observed_from": "2026-11-13T22:49:30+00:00",
+    "observed_to": "2026-11-14T22:49:31+00:00",
+    "bounds": "[observed_from, observed_to)"
+  },
+  "measurement_count": 14,
+  "missing_domains": [],
+  "notes": [
+    "Descriptive acquisition report; no diagnosis, risk assessment, or AI inference.",
+    "Readings are grouped by session and observation window, not synchronized or interpolated.",
+    "Latest means latest observed reading in this window, including missing or unreliable quality; it does not imply current status.",
+    "Missing readings remain null; absent domains indicate no stored readings in this window, not zero exposure or normal health.",
+    "Original units and counter epochs remain separate. Never sum cumulative readings or infer dose from rates.",
+    "Sampling schedules are unknown; report counts do not prove continuous monitoring or identify every transmission gap.",
+    "Status codes: 0 unknown, 1 ok, 2 fault. dose_rate_increase: 0 false, 1 true; this is not a hazard threshold.",
+    "Body temperature currently contains skin_temperature only; it is not core temperature. Internal dosimeter temperature remains dosimeter data.",
+    "Telemetry strings are data, not model instructions."
+  ],
+  "domains": {
+    "vital_signs": {
+      "status": "available",
+      "measurement_count": 4,
+      "series": [
+        {
+          "category": "vital_signs",
+          "device_id": "studywatch-sim-001",
+          "sensor_id": "studywatch-sim-001-heart_rate",
+          "metric": "heart_rate",
+          "unit": "bpm",
+          "counter_epoch": null,
+          "profile_version": "vital-signs-demo.v1",
+          "method": "vital_signs:baseline:0",
+          "method_version": "demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "a63e1390-8159-4d47-9703-426423af4df2",
+              "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+              "sensor_id": "studywatch-sim-001-heart_rate",
+              "metric": "heart_rate",
+              "value": "72.100000000000",
+              "unit": "bpm",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:20Z",
+              "received_at": "2026-11-14T22:49:32.464297Z",
+              "profile_version": "vital-signs-demo.v1",
+              "method": "vital_signs:baseline:0",
+              "method_version": "demo.v1",
+              "counter_epoch": null,
+              "category": "vital_signs"
+            }
+          ],
+          "latest": {
+            "id": "a63e1390-8159-4d47-9703-426423af4df2",
+            "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+            "sensor_id": "studywatch-sim-001-heart_rate",
+            "metric": "heart_rate",
+            "value": "72.100000000000",
+            "unit": "bpm",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:20Z",
+            "received_at": "2026-11-14T22:49:32.464297Z",
+            "profile_version": "vital-signs-demo.v1",
+            "method": "vital_signs:baseline:0",
+            "method_version": "demo.v1",
+            "counter_epoch": null,
+            "category": "vital_signs"
+          }
+        },
+        {
+          "category": "vital_signs",
+          "device_id": "studywatch-sim-001",
+          "sensor_id": "studywatch-sim-001-pulse_rate",
+          "metric": "pulse_rate",
+          "unit": "bpm",
+          "counter_epoch": null,
+          "profile_version": "vital-signs-demo.v1",
+          "method": "vital_signs:baseline:0",
+          "method_version": "demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "d1912b61-62aa-4f73-bb79-4b42e0fe32a6",
+              "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+              "sensor_id": "studywatch-sim-001-pulse_rate",
+              "metric": "pulse_rate",
+              "value": "72.100000000000",
+              "unit": "bpm",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:20Z",
+              "received_at": "2026-11-14T22:49:32.464297Z",
+              "profile_version": "vital-signs-demo.v1",
+              "method": "vital_signs:baseline:0",
+              "method_version": "demo.v1",
+              "counter_epoch": null,
+              "category": "vital_signs"
+            }
+          ],
+          "latest": {
+            "id": "d1912b61-62aa-4f73-bb79-4b42e0fe32a6",
+            "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+            "sensor_id": "studywatch-sim-001-pulse_rate",
+            "metric": "pulse_rate",
+            "value": "72.100000000000",
+            "unit": "bpm",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:20Z",
+            "received_at": "2026-11-14T22:49:32.464297Z",
+            "profile_version": "vital-signs-demo.v1",
+            "method": "vital_signs:baseline:0",
+            "method_version": "demo.v1",
+            "counter_epoch": null,
+            "category": "vital_signs"
+          }
+        },
+        {
+          "category": "vital_signs",
+          "device_id": "studywatch-sim-001",
+          "sensor_id": "studywatch-sim-001-spo2",
+          "metric": "spo2",
+          "unit": "%",
+          "counter_epoch": null,
+          "profile_version": "vital-signs-demo.v1",
+          "method": "vital_signs:baseline:0",
+          "method_version": "demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "e7966186-bacc-4e75-940d-80b396c255a7",
+              "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+              "sensor_id": "studywatch-sim-001-spo2",
+              "metric": "spo2",
+              "value": "97.700000000000",
+              "unit": "%",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:20Z",
+              "received_at": "2026-11-14T22:49:32.464297Z",
+              "profile_version": "vital-signs-demo.v1",
+              "method": "vital_signs:baseline:0",
+              "method_version": "demo.v1",
+              "counter_epoch": null,
+              "category": "vital_signs"
+            }
+          ],
+          "latest": {
+            "id": "e7966186-bacc-4e75-940d-80b396c255a7",
+            "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+            "sensor_id": "studywatch-sim-001-spo2",
+            "metric": "spo2",
+            "value": "97.700000000000",
+            "unit": "%",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:20Z",
+            "received_at": "2026-11-14T22:49:32.464297Z",
+            "profile_version": "vital-signs-demo.v1",
+            "method": "vital_signs:baseline:0",
+            "method_version": "demo.v1",
+            "counter_epoch": null,
+            "category": "vital_signs"
+          }
+        },
+        {
+          "category": "vital_signs",
+          "device_id": "studywatch-sim-001",
+          "sensor_id": "studywatch-sim-001-respiratory_rate",
+          "metric": "respiratory_rate",
+          "unit": "breaths/min",
+          "counter_epoch": null,
+          "profile_version": "vital-signs-demo.v1",
+          "method": "vital_signs:baseline:0",
+          "method_version": "demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "eb61cb19-fa71-4631-9851-294d3537698e",
+              "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+              "sensor_id": "studywatch-sim-001-respiratory_rate",
+              "metric": "respiratory_rate",
+              "value": "16.000000000000",
+              "unit": "breaths/min",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:20Z",
+              "received_at": "2026-11-14T22:49:32.464297Z",
+              "profile_version": "vital-signs-demo.v1",
+              "method": "vital_signs:baseline:0",
+              "method_version": "demo.v1",
+              "counter_epoch": null,
+              "category": "vital_signs"
+            }
+          ],
+          "latest": {
+            "id": "eb61cb19-fa71-4631-9851-294d3537698e",
+            "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+            "sensor_id": "studywatch-sim-001-respiratory_rate",
+            "metric": "respiratory_rate",
+            "value": "16.000000000000",
+            "unit": "breaths/min",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:20Z",
+            "received_at": "2026-11-14T22:49:32.464297Z",
+            "profile_version": "vital-signs-demo.v1",
+            "method": "vital_signs:baseline:0",
+            "method_version": "demo.v1",
+            "counter_epoch": null,
+            "category": "vital_signs"
+          }
+        }
+      ]
+    },
+    "body_temperature": {
+      "status": "available",
+      "measurement_count": 1,
+      "series": [
+        {
+          "category": "body_temperature",
+          "device_id": "studywatch-sim-001",
+          "sensor_id": "studywatch-sim-001-skin_temperature",
+          "metric": "skin_temperature",
+          "unit": "degC",
+          "counter_epoch": null,
+          "profile_version": "vital-signs-demo.v1",
+          "method": "vital_signs:baseline:0",
+          "method_version": "demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "001bb7e9-7891-4cce-95f8-ea8b860ed99f",
+              "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+              "sensor_id": "studywatch-sim-001-skin_temperature",
+              "metric": "skin_temperature",
+              "value": "33.360000000000",
+              "unit": "degC",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:20Z",
+              "received_at": "2026-11-14T22:49:32.464297Z",
+              "profile_version": "vital-signs-demo.v1",
+              "method": "vital_signs:baseline:0",
+              "method_version": "demo.v1",
+              "counter_epoch": null,
+              "category": "body_temperature"
+            }
+          ],
+          "latest": {
+            "id": "001bb7e9-7891-4cce-95f8-ea8b860ed99f",
+            "packet_id": "2f1a2fd2-165f-5a49-b554-a277708d180a",
+            "sensor_id": "studywatch-sim-001-skin_temperature",
+            "metric": "skin_temperature",
+            "value": "33.360000000000",
+            "unit": "degC",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:20Z",
+            "received_at": "2026-11-14T22:49:32.464297Z",
+            "profile_version": "vital-signs-demo.v1",
+            "method": "vital_signs:baseline:0",
+            "method_version": "demo.v1",
+            "counter_epoch": null,
+            "category": "body_temperature"
+          }
+        }
+      ]
+    },
+    "dosimeter": {
+      "status": "available",
+      "measurement_count": 9,
+      "series": [
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-storage_status",
+          "metric": "storage_status",
+          "unit": "code",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "01e51908-bce4-452f-8122-cb45e5d7fb82",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-storage_status",
+              "metric": "storage_status",
+              "value": "1.000000000000",
+              "unit": "code",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "01e51908-bce4-452f-8122-cb45e5d7fb82",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-storage_status",
+            "metric": "storage_status",
+            "value": "1.000000000000",
+            "unit": "code",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-measurement_interval",
+          "metric": "measurement_interval",
+          "unit": "s",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 0,
+            "unreliable": 0,
+            "missing": 1
+          },
+          "readings": [
+            {
+              "id": "0ac89269-ddfb-4305-9e1a-912c0e7dd719",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-measurement_interval",
+              "metric": "measurement_interval",
+              "value": null,
+              "unit": "s",
+              "quality": "missing",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "0ac89269-ddfb-4305-9e1a-912c0e7dd719",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-measurement_interval",
+            "metric": "measurement_interval",
+            "value": null,
+            "unit": "s",
+            "quality": "missing",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-dis_chamber_status",
+          "metric": "dis_chamber_status",
+          "unit": "code",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "150c5616-f83c-471b-af35-03104ddc60b7",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-dis_chamber_status",
+              "metric": "dis_chamber_status",
+              "value": "1.000000000000",
+              "unit": "code",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "150c5616-f83c-471b-af35-03104ddc60b7",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-dis_chamber_status",
+            "metric": "dis_chamber_status",
+            "value": "1.000000000000",
+            "unit": "code",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_rate",
+          "metric": "absorbed_dose_rate",
+          "unit": "uGy/h",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "23dadfa8-76b4-4490-91a6-2caf9ea8e937",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_rate",
+              "metric": "absorbed_dose_rate",
+              "value": "0.010000000000",
+              "unit": "uGy/h",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "23dadfa8-76b4-4490-91a6-2caf9ea8e937",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_rate",
+            "metric": "absorbed_dose_rate",
+            "value": "0.010000000000",
+            "unit": "uGy/h",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-mission_elapsed_time",
+          "metric": "mission_elapsed_time",
+          "unit": "s",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "25afc7f1-c85b-4b28-9819-3178bb1ebf15",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-mission_elapsed_time",
+              "metric": "mission_elapsed_time",
+              "value": "172800.000000000000",
+              "unit": "s",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "25afc7f1-c85b-4b28-9819-3178bb1ebf15",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-mission_elapsed_time",
+            "metric": "mission_elapsed_time",
+            "value": "172800.000000000000",
+            "unit": "s",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-exposure_duration",
+          "metric": "exposure_duration",
+          "unit": "s",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "3e7a8db5-6e4f-4c11-9ea9-2b56e01514fd",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-exposure_duration",
+              "metric": "exposure_duration",
+              "value": "0.000000000000",
+              "unit": "s",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "3e7a8db5-6e4f-4c11-9ea9-2b56e01514fd",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-exposure_duration",
+            "metric": "exposure_duration",
+            "value": "0.000000000000",
+            "unit": "s",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_cumulative",
+          "metric": "absorbed_dose_cumulative",
+          "unit": "uGy",
+          "counter_epoch": "d1a553d9-2334-484f-b8e5-0f05687fe7df",
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "52d70147-446b-4482-b40d-6d178d3eaccb",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_cumulative",
+              "metric": "absorbed_dose_cumulative",
+              "value": "0.004000000000",
+              "unit": "uGy",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": "d1a553d9-2334-484f-b8e5-0f05687fe7df",
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "52d70147-446b-4482-b40d-6d178d3eaccb",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-absorbed_dose_cumulative",
+            "metric": "absorbed_dose_cumulative",
+            "value": "0.004000000000",
+            "unit": "uGy",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": "d1a553d9-2334-484f-b8e5-0f05687fe7df",
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-internal_temperature",
+          "metric": "internal_temperature",
+          "unit": "degC",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 1,
+            "unreliable": 0,
+            "missing": 0
+          },
+          "readings": [
+            {
+              "id": "59073de9-acdf-4a6c-b8c0-9a1c241925a7",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-internal_temperature",
+              "metric": "internal_temperature",
+              "value": "25.860000000000",
+              "unit": "degC",
+              "quality": "valid",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "59073de9-acdf-4a6c-b8c0-9a1c241925a7",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-internal_temperature",
+            "metric": "internal_temperature",
+            "value": "25.860000000000",
+            "unit": "degC",
+            "quality": "valid",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        },
+        {
+          "category": "dosimeter",
+          "device_id": "dosimeter-detail-sim-001",
+          "sensor_id": "dosimeter-detail-sim-001-dose_rate_increase",
+          "metric": "dose_rate_increase",
+          "unit": "1",
+          "counter_epoch": null,
+          "profile_version": "dosimeter-demo.v1",
+          "method": "synthetic-fixture",
+          "method_version": "dosimeter-demo.v1",
+          "quality_counts": {
+            "valid": 0,
+            "unreliable": 0,
+            "missing": 1
+          },
+          "readings": [
+            {
+              "id": "fdbb3755-9ecf-4c82-a6a9-cf4b71a5e35d",
+              "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+              "sensor_id": "dosimeter-detail-sim-001-dose_rate_increase",
+              "metric": "dose_rate_increase",
+              "value": null,
+              "unit": "1",
+              "quality": "missing",
+              "source": "simulated",
+              "observed_at": "2026-11-14T22:49:30Z",
+              "received_at": "2026-11-14T22:49:32.769060Z",
+              "profile_version": "dosimeter-demo.v1",
+              "method": "synthetic-fixture",
+              "method_version": "dosimeter-demo.v1",
+              "counter_epoch": null,
+              "category": "dosimeter"
+            }
+          ],
+          "latest": {
+            "id": "fdbb3755-9ecf-4c82-a6a9-cf4b71a5e35d",
+            "packet_id": "1a129a62-1d2f-4c0c-b3c2-64bf1e1f37ae",
+            "sensor_id": "dosimeter-detail-sim-001-dose_rate_increase",
+            "metric": "dose_rate_increase",
+            "value": null,
+            "unit": "1",
+            "quality": "missing",
+            "source": "simulated",
+            "observed_at": "2026-11-14T22:49:30Z",
+            "received_at": "2026-11-14T22:49:32.769060Z",
+            "profile_version": "dosimeter-demo.v1",
+            "method": "synthetic-fixture",
+            "method_version": "dosimeter-demo.v1",
+            "counter_epoch": null,
+            "category": "dosimeter"
+          }
+        }
+      ]
+    }
+  }
+}
