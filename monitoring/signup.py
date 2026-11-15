@@ -8,6 +8,7 @@ SIGNUP_DEMO_SESSION, which exists so a prototype evaluator can see data right aw
 from django.conf import settings
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.views import LoginView
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -47,6 +48,14 @@ def _grant_demo_access(user):
         session.authorized_users.add(user)
 
 
+def grant_demo_access_on_login(sender, user, request, **kwargs):
+    """Same rule as sign-up, applied at login: an account created before the demonstration session existed
+    (or before SIGNUP_DEMO_SESSION was set) gets it the next time it signs in. Only the session named in
+    SIGNUP_DEMO_SESSION is ever granted, and only while self-service sign-up is enabled."""
+    if settings.ALLOW_SIGNUP:
+        _grant_demo_access(user)
+
+
 @csrf_protect
 def signup(request):
     if not settings.ALLOW_SIGNUP:
@@ -78,3 +87,6 @@ class AppLoginView(LoginView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(allow_signup=settings.ALLOW_SIGNUP, **kwargs)
+
+
+user_logged_in.connect(grant_demo_access_on_login, dispatch_uid="monitoring.grant_demo_access_on_login")

@@ -82,3 +82,16 @@ class SignUpDemoAccessTests(TestCase):
         user = User.objects.get(username="ana")
         self.assertTrue(self.demo.authorized_users.filter(pk=user.pk).exists())
         self.assertFalse(self.other.authorized_users.filter(pk=user.pk).exists())
+
+    def test_existing_account_gets_the_demo_session_at_login(self):
+        user = User.objects.create_user("vieja", password="Clave-anterior-2026")
+        self.assertFalse(self.demo.authorized_users.filter(pk=user.pk).exists())
+        self.client.post("/accounts/login/", {"username": "vieja", "password": "Clave-anterior-2026"})
+        self.assertTrue(self.demo.authorized_users.filter(pk=user.pk).exists())
+        self.assertFalse(self.other.authorized_users.filter(pk=user.pk).exists())
+
+    @override_settings(ALLOW_SIGNUP=False)
+    def test_login_grants_nothing_when_sign_up_is_off(self):
+        user = User.objects.create_user("cerrada", password="Clave-anterior-2026")
+        self.client.post("/accounts/login/", {"username": "cerrada", "password": "Clave-anterior-2026"})
+        self.assertFalse(self.demo.authorized_users.filter(pk=user.pk).exists())

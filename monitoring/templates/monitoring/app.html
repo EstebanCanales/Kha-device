@@ -630,8 +630,21 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 		}
 
 		/* ---------- carga ---------- */
+		// Cuenta sin ninguna sesión asignada: se explica en pantalla y no se pide nada a la API (antes, cambiar de
+		// Simulado a Hardware o pulsar Reintentar pedía /sessions//overview/ y devolvía 404).
+		function noSession() {
+			$('state').dataset.tone = 'idle';
+			$('stateTitle').textContent = 'No tienes sesiones asignadas';
+			$('stateText').textContent = 'Tu cuenta aún no puede ver ninguna sesión de monitoreo. Pide a un administrador que te dé acceso.';
+			$('kpis').hidden = $('readings').hidden = $('dosimeter').hidden = $('ai').hidden = true;
+			$('banner').hidden = true;
+			setLive('idle', 'Sin sesión');
+			$('pause').textContent = 'Comprobar de nuevo';
+		}
+
 		async function load({ manual = false } = {}) {
 			if (busy) return;
+			if (!$('session').value) { noSession(); return; }
 			busy = true;
 			try {
 				const data = await api(`/api/v1/sessions/${$('session').value}/overview/?source=${source}`);
@@ -670,11 +683,10 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 				const sessions = (await api('/api/v1/sessions/?page_size=100')).results;
 				$('banner').hidden = true;
 				if (!sessions.length) {
-					$('stateTitle').textContent = 'No tienes sesiones asignadas';
-					$('stateText').textContent = 'Pide a un administrador que te dé acceso a una sesión de monitoreo.';
-					setLive('idle', 'Sin sesión');
+					noSession();
 					return;
 				}
+				$('pause').textContent = paused ? 'Reanudar' : 'Pausar';
 				$('session').replaceChildren(...sessions.map((s) => el('option', { value: s.id }, s.identifier)));
 				$('sessionBox').hidden = sessions.length < 2;
 				const saved = sessionStorage.getItem('kha:session');
@@ -736,6 +748,8 @@ python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
 		$('summarize').addEventListener('click', () => summarize());
 		$('retry').addEventListener('click', () => (last ? load({ manual: true }) : init()));
 		$('pause').addEventListener('click', () => {
+			// Sin sesión no hay nada que pausar: el botón vuelve a preguntar si ya se asignó alguna.
+			if (!$('session').value) { paused = false; $('pause').textContent = 'Pausar'; init(); return; }
 			paused = !paused;
 			$('pause').textContent = paused ? 'Reanudar' : 'Pausar';
 			setLive(paused ? 'idle' : 'on', paused ? 'En pausa' : 'En vivo');
