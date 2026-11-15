@@ -22,6 +22,7 @@ from drf_spectacular.views import SpectacularAPIView
 from rest_framework.routers import SimpleRouter
 
 from monitoring.app import app
+from monitoring.signup import AppLoginView, signup
 from monitoring.views import (
     CounterEpochViewSet,
     DeviceViewSet,
@@ -48,7 +49,8 @@ router.register("config/counter-epochs", CounterEpochViewSet)
 urlpatterns = [
     path('', RedirectView.as_view(url='/app/', permanent=False)),
     path('app/', app, name='app'),
-    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/login/', AppLoginView.as_view(), name='login'),
+    path('accounts/signup/', signup, name='signup'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('admin/', admin.site.urls),
     path('api/v1/', include(router.urls)),

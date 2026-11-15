@@ -1,0 +1,35 @@
+---
+import { content, type Lang } from '../i18n/content';
+import Layout from '../layouts/Layout.astro';
+import Devices from './Devices.astro';
+import Different from './Different.astro';
+import Flow from './Flow.astro';
+import Footer from './Footer.astro';
+import Hero from './Hero.astro';
+import Iss from './Iss.astro';
+import LangSwitch from './LangSwitch.astro';
+import Models from './Models.astro';
+import SolarSystem from './SolarSystem.astro';
+import Video from './Video.astro';
+
+const { lang } = Astro.props as { lang: Lang };
+---
+
+<Layout lang={lang}>
+	<LangSwitch lang={lang} />
+	<main>
+		<Hero lang={lang} />
+		<Video lang={lang} />
+		<Different lang={lang} />
+		<Iss lang={lang} />
+		<Devices lang={lang} />
+		<Flow lang={lang} />
+		<Models lang={lang} />
+		<SolarSystem lang={lang} />
+	</main>
+	<Footer lang={lang} />
+</Layout>
+
+<script>
+	import '../scripts/reveal';
+</script>

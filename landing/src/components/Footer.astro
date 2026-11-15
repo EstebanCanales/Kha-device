@@ -1,42 +1,18 @@
 ---
 // Pie de página: el logo redibujado en ASCII y los enlaces del proyecto.
+import { content, resolveHref, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].footer;
 const repo = 'https://github.com/EstebanCanales/Kha-device';
 const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://127.0.0.1:8000/app/';
-const groups = [
-	{
-		title: 'En esta página',
-		links: [
-			['Video', '#video'],
-			['Tecnología', '#tecnologia'],
-			['Dispositivos', '#dispositivos'],
-			['Cómo funciona', '#funcionamiento'],
-			['Inteligencia artificial', '#ia'],
-			['Sistema solar', '#sistema-solar'],
-		],
-	},
-	{
-		title: 'Proyecto',
-		links: [
-			['Entrar a la app', appUrl],
-			['Repositorio en GitHub', repo],
-			['Módulo de IA', `${repo}/tree/main/ia`],
-		],
-	},
-	{
-		title: 'Modelos',
-		links: [
-			['Salud · Llama 3.2 3B médico', 'https://huggingface.co/MohamedAhmedAE/Llama-3.2-3B-Instruct-Medical-Finetuned-merged'],
-			['Astronomía · LoRA sobre Llama 3.2 3B', 'https://huggingface.co/ojayy/llama32-3b-mmlu-astronomy-lora'],
-			['Síntesis · IBM Granite 3.3 2B', 'https://huggingface.co/ibm-granite/granite-3.3-2b-instruct'],
-		],
-	},
-];
+const groups = t.groups.map((g) => ({ ...g, links: g.links.map(([label, target]) => [label, resolveHref(target, lang, appUrl, repo)]) }));
 ---
 
 <footer class="footer">
-	<canvas class="footer__logo" data-src="/klaskhaIcon.png" role="img" aria-label="Logo del proyecto dibujado en ASCII"></canvas>
+	<canvas class="footer__logo" data-src="/klaskhaIcon.png" role="img" aria-label={t.logoLabel}></canvas>
 
-	<nav class="footer__nav" aria-label="Enlaces del proyecto">
+	<nav class="footer__nav" aria-label={t.navLabel}>
 		{
 			groups.map((group) => (
 				<div>

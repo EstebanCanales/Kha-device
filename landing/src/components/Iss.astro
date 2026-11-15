@@ -1,17 +1,18 @@
 ---
 // Estación Espacial Internacional en ASCII sobre el limbo de la Tierra. Abre el bloque de tecnología.
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].iss;
 ---
 
 <section class="iss" id="tecnologia" aria-labelledby="iss-title">
 	<canvas class="iss__canvas" aria-hidden="true"></canvas>
 
 	<div class="iss__copy" data-reveal>
-		<h2 id="iss-title">Tecnología</h2>
-		<p>
-			Así vamos a construir Kha-device 01: dos dispositivos miden y tres modelos de lenguaje analizan. Dos especialistas, cada uno
-			en lo suyo, y un tercero que resume.
-		</p>
-		<p class="iss__credit">Estación Espacial Internacional · redibujada en ASCII</p>
+		<h2 id="iss-title">{t.title}</h2>
+		<p>{t.body}</p>
+		<p class="iss__credit">{t.credit}</p>
 	</div>
 </section>
 

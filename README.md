@@ -13,7 +13,9 @@ uv run python manage.py createsuperuser
 uv run python manage.py runserver
 ```
 
-For PostgreSQL set `DB_ENGINE=postgresql` plus `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` before running migrations. In deployment also set `DJANGO_DEBUG=false`, a private `DJANGO_SECRET_KEY`, and `DJANGO_ALLOWED_HOSTS`. See [.env.example](.env.example) for configuration names; the application reads environment variables, not `.env` files automatically. HTTPS is required outside local development. Do not apply migrations to a production database without a backup and review.
+For a hosted PostgreSQL database such as [Layerbase Cloud](https://layerbase.com/docs), set `DATABASE_URL` to the connection string shown on the database page (`postgresql://USER:PASSWORD@YOUR-DB.cloud.layerbase.dev/DBNAME?sslmode=require`), then run `python manage.py migrate` and `python manage.py demo_kha` (or load your own data) against it. `DATABASE_URL` takes precedence over the `DB_*` variables; only PostgreSQL URLs are accepted, connections are kept open for `DB_CONN_MAX_AGE` seconds (default 60) and health-checked before reuse. The connection string is a secret: keep it in the environment or the git-ignored `.env`, never in the repository.
+
+For a PostgreSQL server you run yourself set `DB_ENGINE=postgresql` plus `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` before running migrations. In deployment also set `DJANGO_DEBUG=false`, a private `DJANGO_SECRET_KEY`, and `DJANGO_ALLOWED_HOSTS`. See [.env.example](.env.example) for configuration names; the application reads environment variables, not `.env` files automatically. HTTPS is required outside local development. Do not apply migrations to a production database without a backup and review.
 
 Admin is at `http://127.0.0.1:8000/admin/`. Staff can configure records there or via `/api/v1/config/`. Session users can read only sessions assigned to them. Device credentials only permit ingestion.
 
@@ -85,7 +87,7 @@ Open `http://127.0.0.1:8000/app/` and sign in with the account you passed to `--
 - `ollama`: the three Hugging Face models served by a local [Ollama](https://ollama.com). Prepare them once with `ia/ollama/setup.sh`, then start the backend with `IA_ENGINE=ollama`.
 - `huggingface`: the same models through transformers, after `uv sync --extra ia`.
 
-Neither language-model engine produces a diagnosis, and the counts shown first in every summary are computed from the readings, not by a model. See [ia/README.md](ia/README.md).
+When `RADATION_API_KEY` (or the correctly spelled `RADIATION_API_KEY`) is set, the space specialist also receives the NASA DONKI radiation-belt events (RBE) for the week up to the last reading, as environmental context only: it is never presented as personal dose, and the summary works the same without it. Neither language-model engine produces a diagnosis, and the counts shown first in every summary are computed from the readings, not by a model. See [ia/README.md](ia/README.md).
 
 ## API surface
 
@@ -172,3 +174,20 @@ uv run --locked python manage.py test monitoring.tests --settings=config.test_se
 ```
 
 This uses an in-memory SQLite database and a test-only fast password hasher. For one area, replace `monitoring.tests` with `monitoring.tests.test_reports`, `monitoring.tests.test_configuration`, or another module listed in the test guide. See [endpoint analysis and coverage](docs/endpoint-tests.md) for the full route inventory and limitations.
+
+
+## Accounts and sign-up
+
+Operators can create their own account at `/accounts/signup/` (linked from the login page). Sign-up is human accounts only; devices keep their own revocable credentials.
+
+- `ALLOW_SIGNUP` switches it on or off. It defaults to on when `DJANGO_DEBUG=true` and to off otherwise, so a deployment must enable it explicitly.
+- A new account is non-staff and reads nothing: an administrator authorizes it for sessions in Django Admin (least privilege).
+- `SIGNUP_DEMO_SESSION` (a session identifier, empty by default) pre-authorizes new accounts for that one demonstration session so an evaluator sees data immediately.
+- Attempts are limited to 10 per client address per hour (HTTP 429 afterwards). The counter lives in the process cache, so it is per worker; use a shared cache in a multi-process deployment.
+- Passwords go through Django's validators (minimum length, common and numeric-only passwords). There is no email verification or password reset yet; that is pending until a mail service is chosen.
+
+## Hosting
+
+Live prototype (simulated data only): landing at <https://kha-device.up.railway.app> and the dashboard at <https://kha-device-app.up.railway.app/app/>.
+
+See [docs/deploy-railway.md](docs/deploy-railway.md) for the Railway setup: a Django service (gunicorn + WhiteNoise), a PostgreSQL plugin, and the static landing site. Migrations and the full test suite are verified against PostgreSQL.

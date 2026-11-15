@@ -1,5 +1,9 @@
 ---
 // Sistema solar en ASCII: el Sol y los ocho planetas en órbita, a vista fija.
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].solar;
 ---
 
 <section class="solar" id="sistema-solar" aria-labelledby="solar-title">
@@ -7,11 +11,8 @@
 		<canvas class="solar__canvas" aria-hidden="true"></canvas>
 
 		<div class="solar__copy">
-			<h2 id="solar-title">Dos lecturas, un resumen</h2>
-			<p>
-				Kha-device 01 recibe información médica y datos espaciales. Cada conjunto lo analiza un modelo especializado, y un
-				tercero combina ambos análisis en un solo resumen.
-			</p>
+			<h2 id="solar-title">{t.title}</h2>
+			<p>{t.body}</p>
 		</div>
 	</div>
 </section>

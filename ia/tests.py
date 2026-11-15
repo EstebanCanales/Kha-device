@@ -85,6 +85,42 @@ class InputTests(TestCase):
             SpecialistInput("health", [Fact("k", "x")] * 41, "simulated")
 
 
+class SpaceContextTests(TestCase):
+    def weather(self, **extra):
+        base = {"status": "ok", "start_date": "2026-11-09", "end_date": "2026-11-15", "event_count": 0, "event_times": []}
+        return {**base, **extra}
+
+    def test_events_are_stated_as_environment_context_not_dose(self):
+        data = build_space_input(analysis(space_weather=self.weather(event_count=2, event_times=["2026-11-13T05:14Z", "2026-11-14T22:40Z"])))
+        fact = next(f for f in data.facts if f.key == "nasa")
+        self.assertIn("2 evento(s)", fact.text)
+        self.assertIn("2026-11-13 05:14 UTC", fact.text)
+        self.assertIn("no dosis personal", fact.text)
+        self.assertIn("La NASA registró 2 evento(s) RBE", data.headline)
+
+    def test_no_events_does_not_claim_zero_radiation(self):
+        data = build_space_input(analysis(space_weather=self.weather()))
+        fact = next(f for f in data.facts if f.key == "nasa")
+        self.assertIn("sin eventos RBE", fact.text)
+        self.assertIn("no significa radiación cero", fact.text)
+        self.assertNotIn("La NASA registró", data.headline)
+
+    def test_without_nasa_context_nothing_is_added(self):
+        for weather in (None, {"status": "not_configured"}, {"status": "unavailable"}):
+            data = build_space_input(analysis(space_weather=weather) if weather else analysis())
+            self.assertFalse(any(f.key == "nasa" for f in data.facts), weather)
+
+    def test_the_context_reaches_the_summary_and_the_nasa_dates_are_not_flagged_as_invented_figures(self):
+        engine = FakeHF({
+            "health": "{}",
+            "space": json.dumps({"analysis": "La NASA registró 2 eventos entre 2026-11-09 y 2026-11-15.", "limitations": []}),
+            "synthesis": "{}",
+        })
+        result = run_pipeline(analysis(space_weather=self.weather(event_count=2, event_times=["2026-11-13T05:14Z"])), engine)
+        self.assertIn("La NASA registró 2 eventos", result["space"]["analysis"])
+        self.assertFalse(any("Se descartó" in n for n in result["space"]["limitations"]))
+
+
 class PipelineTests(TestCase):
     def test_rules_engine_reports_changes_limits_and_missing_data(self):
         result = run_pipeline(analysis(), RulesEngine())

@@ -56,6 +56,7 @@ from .serializers import (
     SessionSerializer,
 )
 from .services import ingest_batch
+from .space_context import space_weather
 
 
 class Conflict(APIException):
@@ -342,6 +343,8 @@ class SessionViewSet(viewsets.ModelViewSet):
     def summary(self, request, pk=None):
         """Run the specialists and the synthesis. Readers of the session may call it; it stores nothing."""
         analysis = analyze_session(self.get_object(), _require_source(request))
+        # NASA context for the space specialist; optional and never an error.
+        analysis["space_weather"] = space_weather(analysis)
         try:
             result = run_pipeline(analysis)
         except IAError as error:

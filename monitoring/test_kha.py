@@ -155,6 +155,50 @@ class SummaryEndpointTests(KhaTestCase):
         self.assertTrue(any("subió" in h for h in body["health"]["highlights"]))
         self.assertIn("No es un diagnóstico", body["disclaimer"])
 
+    def test_summary_adds_nasa_context_when_a_key_is_configured_and_survives_its_failure(self):
+        from django.core.cache import cache
+        from django.test import override_settings
+
+        from .nasa_radiation import RadiationUnavailable
+
+        self.client.force_authenticate(self.reader)
+        cache.clear()
+        event = {"rbeID": "x", "eventTime": "2026-11-14T20:00Z"}
+        fetched = {"event_count": 1, "events": [event]}
+        with override_settings(RADATION_API_KEY="demo"), mock.patch("monitoring.space_context.fetch_radiation_events", return_value=fetched) as call:
+            body = self.client.post(self.url("summary")).json()
+        self.assertEqual(body["analysis"]["space_weather"]["status"], "ok")
+        self.assertEqual(body["analysis"]["space_weather"]["event_count"], 1)
+        self.assertIn("NASA DONKI", body["space"]["analysis"])
+        self.assertEqual(call.call_args.kwargs["api_key"], "demo")
+        self.assertNotIn("demo", str(body["analysis"]["space_weather"]))  # the key never leaves the server
+        # A NASA failure must not break the summary.
+        cache.clear()
+        with override_settings(RADATION_API_KEY="demo"), mock.patch("monitoring.space_context.fetch_radiation_events", side_effect=RadiationUnavailable("down")):
+            response = self.client.post(self.url("summary"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["analysis"]["space_weather"]["status"], "unavailable")
+        self.assertNotIn("NASA DONKI", response.json()["space"]["analysis"])
+
+    def test_summary_without_a_nasa_key_works_and_says_it_is_not_configured(self):
+        from django.test import override_settings
+
+        self.client.force_authenticate(self.reader)
+        with override_settings(RADATION_API_KEY=""):
+            body = self.client.post(self.url("summary")).json()
+        self.assertEqual(body["analysis"]["space_weather"], {"status": "not_configured"})
+
+    def test_the_correctly_spelled_nasa_key_variable_is_accepted_too(self):
+        import importlib
+        import os
+
+        import config.settings as settings
+
+        with mock.patch.dict(os.environ, {"RADIATION_API_KEY": "from-correct-spelling"}, clear=False):
+            os.environ.pop("RADATION_API_KEY", None)
+            self.assertEqual(importlib.reload(settings).RADATION_API_KEY, "from-correct-spelling")
+        importlib.reload(settings)
+
     def test_overview_bundles_analysis_series_and_engine_in_one_request(self):
         self.client.force_authenticate(self.reader)
         body = self.client.get(self.url("overview")).json()
@@ -169,7 +213,7 @@ class SummaryEndpointTests(KhaTestCase):
         self.assertEqual(len(hr["points"]), 40)
 
     def test_overview_downsamples_long_series_and_keeps_the_last_point(self):
-        # 300 readings every 30 s span 2.5 h, inside the 3 h chart window.
+        # 300 readings every 30 s, two hours after the 40 from setUp: all 340 fall inside the 24 h chart window.
         self.heart_rate_more = [70 + (i % 5) for i in range(300)]
         self.client.force_authenticate(self.reader)
         self.start += timedelta(hours=2)
@@ -177,7 +221,7 @@ class SummaryEndpointTests(KhaTestCase):
         (hr,) = [s for s in self.client.get(self.url("overview")).json()["sensors"] if s["metric"] == "heart_rate"]
         self.assertLessEqual(len(hr["points"]), 121)
         self.assertEqual(hr["points"][-1][1], float(self.heart_rate_more[-1]))
-        self.assertEqual(hr["readings"], 300)
+        self.assertEqual(hr["readings"], 340)
 
     def test_overview_without_readings_is_empty_not_an_error(self):
         self.client.force_authenticate(self.reader)
@@ -253,14 +297,15 @@ class DemoCommandTests(TestCase):
         return out.getvalue()
 
     def test_one_command_leaves_a_user_who_can_read_data_through_the_api(self):
-        text = self.run_demo("--password", "una-clave-de-prueba-9", "--minutes", "30")
-        self.assertIn("Se cargaron 120 paquetes", text)
+        # Default window: 24 h at one sample every 30 minutes = 48 samples per device.
+        text = self.run_demo("--password", "una-clave-de-prueba-9")
+        self.assertIn("Se cargaron 96 paquetes", text)
         self.assertIn("una-clave-de-prueba-9", text)
         client = APIClient()
         self.assertTrue(client.login(username="demo", password="una-clave-de-prueba-9"))
         session = client.get("/api/v1/sessions/").json()["results"][0]
         overview = client.get(f"/api/v1/sessions/{session['id']}/overview/?source=simulated").json()
-        self.assertEqual(overview["analysis"]["window"]["packets"], 60)
+        self.assertEqual(overview["analysis"]["window"]["packets"], 48)
         self.assertEqual(overview["analysis"]["metrics"]["heart_rate"]["status"], "shift_up")
         self.assertEqual({s["device_kind"] for s in overview["sensors"]}, {"harness", "dosimeter"})
 

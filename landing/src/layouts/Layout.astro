@@ -1,5 +1,12 @@
+---
+import { content, LANGS, pathFor, type Lang } from '../i18n/content';
+
+const { lang = 'en' } = Astro.props as { lang?: Lang };
+const meta = content[lang].meta;
+---
+
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width" />
@@ -11,10 +18,20 @@
 			rel="stylesheet"
 		/>
 		<meta name="generator" content={Astro.generator} />
-		<title>Kha-device 01</title>
+		<title>{meta.title}</title>
+		<meta name="description" content={meta.description} />
+		{LANGS.map((code) => <link rel="alternate" hreflang={code} href={pathFor(code)} />)}
+		<link rel="alternate" hreflang="x-default" href={pathFor('en')} />
 		<!-- Sin JavaScript no hay quien revele el contenido: solo se oculta si el script corre. -->
-		<script is:inline>
+		<script is:inline define:vars={{ base: import.meta.env.BASE_URL }}>
 			document.documentElement.classList.add('js');
+			// El inglés es el idioma principal. Solo se cambia si la persona eligió otro en el selector en una visita anterior.
+			try {
+				const here = document.documentElement.lang;
+				const saved = localStorage.getItem('kha:lang');
+				const root = String(base).replace(/\/$/, '');
+				if ((saved === 'en' || saved === 'es') && saved !== here) location.replace(saved === 'en' ? root + '/' : root + '/es/');
+			} catch {}
 		</script>
 	</head>
 	<body>
@@ -38,6 +55,8 @@
 
 	html {
 		scroll-behavior: smooth;
+		/* Ningún elemento decorativo puede crear scroll horizontal. */
+		overflow-x: clip;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

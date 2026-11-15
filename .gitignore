@@ -56,3 +56,6 @@ Thumbs.db
 
 # Local model weights for the Ollama engine
 ia/ollama/models/
+
+# Collected static files (python manage.py collectstatic)
+staticfiles/

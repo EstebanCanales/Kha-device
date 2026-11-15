@@ -17,6 +17,12 @@ def reading(sensor_id, metric, value, unit, **extra):
     return {"sensor_id": sensor_id, "metric": metric, "value": value, "unit": unit, "quality": quality, **extra}
 
 
+# Simulated devices report one sample every 30 minutes. It is a simulation choice, not a confirmed hardware rate.
+STEP_SECONDS = 1800
+# Default history: 24 hours, which gives 48 samples, enough for a baseline and a recent window (the analysis needs 20).
+DEFAULT_MINUTES = 1440
+
+
 def generate(
     start: datetime, samples: int, step_seconds: int, seed: int, scenario: str, dropout: float,
     epoch_high: str, epoch_low: str,

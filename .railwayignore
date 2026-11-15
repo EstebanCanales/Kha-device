@@ -1,0 +1,12 @@
+# Not part of the backend image.
+landing/
+.env
+.env.*
+db.sqlite3
+*.sqlite3
+.venv/
+staticfiles/
+__pycache__/
+*.pyc
+.git/
+docs/

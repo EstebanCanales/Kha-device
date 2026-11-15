@@ -1,11 +1,15 @@
 ---
 // Hueco para el video. Para integrarlo: pon el <video> o el <iframe> dentro de
 // `.video__frame` (ocupa todo el marco 16:9) y quita el <p class="video__pending">.
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].video;
 ---
 
-<section class="video" id="video" aria-label="Video de Kha-device 01">
+<section class="video" id="video" aria-label={t.label}>
 	<div class="video__frame" data-video data-reveal>
-		<p class="video__pending">Video · pendiente</p>
+		<p class="video__pending">{t.pending}</p>
 	</div>
 </section>
 

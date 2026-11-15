@@ -194,7 +194,9 @@ def analyze_session(session, source: str) -> dict:
 
 
 
-SERIES_WINDOW = timedelta(hours=3)
+# History shown in the dashboard charts. A day: simulated devices report every 30 minutes, so a shorter window
+# would leave only a handful of points per chart.
+SERIES_WINDOW = timedelta(hours=24)
 SERIES_POINTS = 120
 SERIES_MAX_ROWS = 20000
 

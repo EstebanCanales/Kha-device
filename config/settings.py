@@ -15,6 +15,8 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
+from config.database import database_from_env
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,11 +31,26 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-local-development-o
 DEBUG = os.getenv('DJANGO_DEBUG', 'true').lower() == 'true'
 
 ALLOWED_HOSTS = [host for host in os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',') if host]
+# Railway publishes the service's public hostname in RAILWAY_PUBLIC_DOMAIN; accept it without repeating it by hand.
+# Its health checker calls the app with the host header "healthcheck.railway.app".
+RAILWAY_DOMAIN = os.getenv('RAILWAY_PUBLIC_DOMAIN', '')
+if RAILWAY_DOMAIN:
+    ALLOWED_HOSTS += [RAILWAY_DOMAIN, 'healthcheck.railway.app']
 if not DEBUG and (not os.getenv('DJANGO_SECRET_KEY') or not ALLOWED_HOSTS):
     raise ImproperlyConfigured('DJANGO_SECRET_KEY and DJANGO_ALLOWED_HOSTS are required when DEBUG is false.')
 SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+# Browsers send the Origin of the HTTPS site on form posts; Django must be told which origins are ours.
+CSRF_TRUSTED_ORIGINS = [origin for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if origin]
+if RAILWAY_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_DOMAIN}')
+# Behind a platform proxy (Railway, or any load balancer that ends TLS) the app receives plain HTTP plus this
+# header. Trust it only when explicitly enabled: a client could forge it if the app were reachable directly.
+if os.getenv('DJANGO_BEHIND_PROXY', 'true' if RAILWAY_DOMAIN else 'false').lower() == 'true':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Platform health checks call these over plain HTTP from inside the network; redirecting them would fail the check.
+SECURE_REDIRECT_EXEMPT = [r'^healthz/$', r'^readyz/$']
 
 
 # Application definition
@@ -52,6 +69,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves the collected static files (dashboard logo, login background script) without a separate web server.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,17 +102,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-if os.getenv('DB_ENGINE') == 'postgresql':
-    DATABASES = {'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', ''),
-        'USER': os.getenv('DB_USER', ''),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-    }}
-else:
-    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': os.getenv('DB_NAME') or BASE_DIR / 'db.sqlite3'}}
+# DATABASE_URL (hosted PostgreSQL such as Layerbase Cloud), or DB_ENGINE=postgresql with DB_* variables, or local SQLite.
+DATABASES = {'default': database_from_env(os.environ, BASE_DIR)}
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -144,7 +154,17 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    # Compressed files with a content hash in the name, so browsers can cache them for a long time.
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage' if not DEBUG else 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
 
+# Self-service sign-up. Off outside development unless explicitly enabled. A new account reads nothing until an
+# administrator authorizes it for a session; SIGNUP_DEMO_SESSION optionally pre-authorizes one demonstration session.
+ALLOW_SIGNUP = os.getenv('ALLOW_SIGNUP', 'true' if DEBUG else 'false').lower() == 'true'
+SIGNUP_DEMO_SESSION = os.getenv('SIGNUP_DEMO_SESSION', '')
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/app/'
 # Signing out goes back to the public landing page (a different site in development).
@@ -162,4 +182,5 @@ SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES'] = {
 }
 
 # NASA DONKI key; preserve the configured environment variable spelling.
-RADATION_API_KEY = os.getenv("RADATION_API_KEY", "")
+# The original spelling is kept, and the correct one is accepted too so a typo does not silently disable the feature.
+RADATION_API_KEY = os.getenv("RADATION_API_KEY") or os.getenv("RADIATION_API_KEY", "")

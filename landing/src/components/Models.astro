@@ -1,32 +1,14 @@
 ---
 // Los tres modelos de IA, cada uno con su animación ASCII.
-const models = [
-	{
-		id: 'salud',
-		title: 'Salud',
-		engine: 'Llama 3.2 3B · ajuste médico',
-		body: 'Un modelo especializado leerá la información médica y devolverá su análisis junto con sus límites. No será un diagnóstico: requiere validación profesional.',
-		alt: 'Trazo de electrocardiograma dibujado en ASCII',
-	},
-	{
-		id: 'astronomia',
-		title: 'Astronomía',
-		engine: 'Llama 3.2 3B · adaptador LoRA de astronomía',
-		body: 'Un segundo modelo, afinado en astronomía, analizará los datos espaciales y señalará lo que no puede afirmar.',
-		alt: 'Galaxia espiral girando, dibujada en ASCII',
-	},
-	{
-		id: 'sintesis',
-		title: 'Síntesis',
-		engine: 'IBM Granite 3.3 2B',
-		body: 'Un tercer modelo integrará ambos análisis en un resumen que separe hallazgos, incertidumbres y datos faltantes.',
-		alt: 'Dos flujos que se unen en uno solo, dibujados en ASCII',
-	},
-];
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].models;
+const models = t.items;
 ---
 
 <section class="models" id="ia" aria-labelledby="models-title">
-	<h2 id="models-title" class="title" data-reveal>Inteligencia artificial</h2>
+	<h2 id="models-title" class="title" data-reveal>{t.title}</h2>
 
 	{
 		models.map((m) => (

@@ -30,7 +30,7 @@ def validate_window(start_date, end_date):
 
 def fetch_radiation_events(start_date, end_date, *, api_key=None):
     start, end = validate_window(start_date, end_date)
-    key = api_key if api_key is not None else os.getenv("RADATION_API_KEY", "")
+    key = api_key if api_key is not None else (os.getenv("RADATION_API_KEY") or os.getenv("RADIATION_API_KEY", ""))
     if not key.strip():
         raise RadiationUnavailable("RADATION_API_KEY is not configured.")
     query = urlencode({"startDate": start_date, "endDate": end_date, "api_key": key})

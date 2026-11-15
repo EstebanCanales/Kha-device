@@ -10,7 +10,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from monitoring.demo_data import CAD, VITALS, generate
+from monitoring.demo_data import CAD, DEFAULT_MINUTES, STEP_SECONDS, VITALS, generate
 from monitoring.models import Device, DeviceCredential, Measurement, MonitoringSession
 from monitoring.serializers import BatchInputSerializer
 from monitoring.services import ingest_batch
@@ -24,7 +24,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--username", default="demo")
         parser.add_argument("--password", help="Password for a NEW user; generated and shown once if omitted")
-        parser.add_argument("--minutes", type=int, default=60, help="History to generate, ending now")
+        parser.add_argument("--minutes", type=int, default=DEFAULT_MINUTES, help="History to generate, ending now")
         parser.add_argument("--scenario", choices=("stress", "baseline"), default="stress")
         parser.add_argument("--seed", type=int, default=1)
         parser.add_argument("--more", action="store_true", help="Add another window even if simulated data already exists")
@@ -51,12 +51,12 @@ class Command(BaseCommand):
             out.write("La sesión ya tiene datos simulados; no se agregan más (usa --more para sumar otra ventana).")
         else:
             start = timezone.now().replace(microsecond=0) - timedelta(minutes=options["minutes"])
-            samples = options["minutes"] * 2  # one sample every 30 s
+            samples = max(1, options["minutes"] * 60 // STEP_SECONDS)  # one sample every 30 minutes
             # A second run must not collide with the first one's packets.
             seed = options["seed"] + (Measurement.objects.count() % 1000 if has_data else 0)
             sent = {CAD: [], VITALS: []}
             for at, vitals, cad in generate(
-                start, samples, 30, seed, options["scenario"], 0.02, info["epoch_high"], info["epoch_low"]
+                start, samples, STEP_SECONDS, seed, options["scenario"], 0.02, info["epoch_high"], info["epoch_low"]
             ):
                 for device_id, readings in ((VITALS, vitals), (CAD, cad)):
                     packet_id = uuid.uuid5(uuid.NAMESPACE_URL, f"kha-sim:{seed}:{device_id}:{at.isoformat()}")

@@ -1,0 +1,62 @@
+---
+import { content, LANGS, pathFor, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].langSwitch;
+---
+
+<nav class="lang" aria-label={t.label}>
+	{
+		LANGS.map((code) => (
+			<a href={pathFor(code)} hreflang={code} lang={code} data-lang={code} aria-current={code === lang ? 'true' : undefined} title={t[code]}>
+				{code.toUpperCase()}
+			</a>
+		))
+	}
+</nav>
+
+<style>
+	.lang {
+		position: fixed;
+		z-index: 50;
+		top: 1rem;
+		right: var(--gutter);
+		display: inline-flex;
+		border: 1px solid var(--line);
+		background: rgba(7, 11, 23, 0.8);
+		backdrop-filter: blur(8px);
+		font-size: 0.72rem;
+		letter-spacing: 0.08em;
+	}
+
+	a {
+		padding: 0.4rem 0.7rem;
+		color: var(--soft);
+		text-decoration: none;
+	}
+
+	a:hover {
+		color: var(--regolith);
+	}
+
+	a[aria-current='true'] {
+		background: var(--line);
+		color: var(--regolith);
+	}
+
+	a:focus-visible {
+		outline: 1px solid var(--ocean);
+		outline-offset: 2px;
+	}
+</style>
+
+<script>
+	// Elegir un idioma lo recuerda para las próximas visitas.
+	document.querySelectorAll<HTMLAnchorElement>('.lang a[data-lang]').forEach((link) =>
+		link.addEventListener('click', () => {
+			try {
+				localStorage.setItem('kha:lang', link.dataset.lang ?? '');
+			} catch {}
+		}),
+	);
+</script>

@@ -1,0 +1,415 @@
+---
+// Qué nos hace diferentes: el planteamiento del proyecto junto al Saturno V del Apolo 11, en ASCII, dando la vuelta a la Luna.
+import { content, type Lang } from '../i18n/content';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = content[lang].different;
+---
+
+<section class="different" id="diferentes" aria-labelledby="different-title">
+	<canvas class="different__art" role="img" aria-label={t.art}></canvas>
+
+	<div class="different__copy">
+		<h2 id="different-title" class="title" data-reveal>{t.title}</h2>
+		{t.paragraphs.map((text) => <p class="prose" data-reveal>{text}</p>)}
+
+		<div class="hazards" data-reveal>
+			<h3>{t.hazardsTitle}</h3>
+			<ul>
+				{t.hazards.map((hazard) => <li>{hazard}</li>)}
+			</ul>
+		</div>
+
+		<p class="prose different__closing" data-reveal>{t.closing}</p>
+		<p class="different__note" data-reveal>{t.note}</p>
+	</div>
+</section>
+
+<style>
+	/* Escena a todo el ancho y de una sola pantalla: la Luna y el cohete detrás, el texto encima a la derecha.
+	   Los tamaños del texto dependen del alto de la ventana para que todo quepa sin desplazarse. */
+	.different {
+		position: relative;
+		min-height: 100svh;
+		display: grid;
+		align-items: center;
+		overflow: hidden;
+		background: var(--sky);
+		/* Aire antes de «Tecnología»: las dos escenas no se pisan. */
+		margin-bottom: clamp(5rem, 16vh, 11rem);
+	}
+
+	/* La escena cubre la sección entera y se desplaza con la página, como cualquier otra parte. */
+	.different__art {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	/* Fundido arriba y abajo con las secciones vecinas. */
+	.different::before,
+	.different::after {
+		content: '';
+		position: absolute;
+		z-index: 2;
+		left: 0;
+		right: 0;
+		height: 7svh;
+		pointer-events: none;
+	}
+
+	.different::before {
+		top: 0;
+		background: linear-gradient(to bottom, var(--sky), transparent);
+	}
+
+	.different::after {
+		bottom: 0;
+		background: linear-gradient(to top, var(--sky), transparent);
+	}
+
+	/* El texto lleva su propio velo: opaco bajo las letras y transparente hacia la Luna. */
+	.different__copy {
+		--step: clamp(0.6rem, 2.1vh, 1.4rem);
+		position: relative;
+		z-index: 1;
+		justify-self: end;
+		align-self: stretch;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		width: min(46rem, 56vw);
+		padding: clamp(1.5rem, 6vh, 4rem) var(--gutter) clamp(1.5rem, 6vh, 4rem) clamp(6rem, 12vw, 12rem);
+		background: linear-gradient(to right, transparent, rgba(7, 11, 23, 0.88) 9rem, var(--sky) 60%);
+	}
+
+	.different__copy .title {
+		font-size: clamp(1.25rem, 4.4vh, 2.3rem);
+	}
+
+	.different__copy .prose {
+		margin-top: var(--step);
+		font-size: clamp(0.78rem, 1.95vh, 1rem);
+		line-height: 1.55;
+	}
+
+	.hazards {
+		margin-top: calc(var(--step) * 1.3);
+	}
+
+	h3 {
+		margin: 0;
+		font-size: 0.68rem;
+		font-weight: 500;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+
+	/* Los cinco peligros como etiquetas en línea: ocupan dos filas en vez de cinco. */
+	.hazards ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		margin: calc(var(--step) * 0.6) 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.hazards li {
+		padding: 0.38rem 0.7rem;
+		border: 1px solid var(--line);
+		font-family: var(--display);
+		font-size: clamp(0.56rem, 1.35vh, 0.7rem);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--regolith);
+	}
+
+	.different__closing {
+		color: var(--regolith);
+	}
+
+	.different__note {
+		margin: var(--step) 0 0;
+		padding-left: 0.8rem;
+		border-left: 2px solid var(--line);
+		font-size: clamp(0.66rem, 1.5vh, 0.76rem);
+		line-height: 1.5;
+		color: var(--dim);
+	}
+
+	/* En pantallas estrechas el texto baja al pie de la escena, sobre un velo. */
+	@media (max-width: 820px) {
+		.different {
+			align-items: end;
+		}
+
+		.different__copy {
+			justify-self: stretch;
+			align-self: end;
+			width: auto;
+			padding: 34svh var(--gutter) clamp(1.5rem, 5vh, 3rem);
+			background: linear-gradient(to bottom, transparent, rgba(7, 11, 23, 0.9) 30svh, var(--sky) 60%);
+		}
+	}
+</style>
+
+<script>
+	import { clamp01, hash, mount, noise, smooth, type Grid } from '../scripts/ascii';
+
+	type RGB = [number, number, number];
+	const WHITE: RGB = [232, 230, 224];
+	const BLACK: RGB = [84, 90, 112]; // negro del original, aclarado para que no se pierda contra el cielo
+	const SILVER: RGB = [168, 176, 192];
+	const RED: RGB = [214, 60, 52];
+	const MOON: RGB = [196, 190, 182];
+	const RAMP = ' .,:;-=+*#%@';
+	const TAU = Math.PI * 2;
+	const ink = (c: RGB, k: number) => `rgb(${Math.min(255, c[0] * k) | 0},${Math.min(255, c[1] * k) | 0},${Math.min(255, c[2] * k) | 0})`;
+	const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+
+	/*
+	 * Saturno V del Apolo 11 (AS-506). `v` recorre el cohete de la punta (0) a las toberas (1) con las proporciones
+	 * reales de sus 110,6 m; `u` es la distancia al eje en radios de la primera etapa (10,1 m de diámetro).
+	 * Devuelve el color de ese punto, o null si queda fuera. El patrón blanco y negro es el de rodadura del original.
+	 */
+	const STAGES: [number, number, number][] = [
+		// [dónde empieza, radio al empezar, radio al acabar]
+		[0.0, 0.05, 0.05],   // torre de escape
+		[0.085, 0.07, 0.39], // módulo de mando (cono)
+		[0.115, 0.39, 0.39], // módulo de servicio
+		[0.18, 0.39, 0.65],  // adaptador del módulo lunar
+		[0.255, 0.65, 0.65], // tercera etapa, S-IVB
+		[0.395, 0.65, 1.0],  // interetapa cónica
+		[0.445, 1.0, 1.0],   // segunda etapa, S-II
+		[0.665, 1.0, 1.0],   // primera etapa, S-IC
+		[0.965, 0.88, 0.94], // toberas de los F-1
+	];
+	/** Radio del fuselaje a la altura `v`, en radios de la primera etapa. */
+	function radiusAt(v: number) {
+		let k = STAGES.length - 1;
+		while (k > 0 && v < STAGES[k][0]) k--;
+		const until = k + 1 < STAGES.length ? STAGES[k + 1][0] : 1;
+		return lerp(STAGES[k][1], STAGES[k][2], (v - STAGES[k][0]) / (until - STAGES[k][0]));
+	}
+	function saturn(u: number, v: number, roll: number): RGB | null {
+		if (v < 0 || v > 1) return null;
+		const a = Math.abs(u);
+		let k = STAGES.length - 1;
+		while (k > 0 && v < STAGES[k][0]) k--;
+		const [from, r0, r1] = STAGES[k];
+		const until = k + 1 < STAGES.length ? STAGES[k + 1][0] : 1;
+		const radius = lerp(r0, r1, (v - from) / (until - from));
+		// Aletas de la base: cuatro, aquí las dos que se ven de perfil.
+		if (v > 0.9 && v < 0.975 && a > 1 && a < 1 + ((v - 0.9) / 0.075) * 0.55) return BLACK;
+		if (a > radius) return null;
+		// Ángulo de ese punto alrededor del fuselaje; al girar la nave sobre su eje, los paneles y las marcas se deslizan.
+		const phi = Math.asin(Math.max(-1, Math.min(1, u / radius))) + roll;
+		const quarter = (((Math.floor(phi / (Math.PI / 2)) % 2) + 2) % 2) === 0; // paneles alternos del patrón de rodadura
+		const facing = (at: number) => Math.abs((((phi - at) % TAU) + TAU + Math.PI) % TAU - Math.PI);
+		switch (k) {
+			case 0: return v > 0.02 && v < 0.06 ? WHITE : SILVER;                      // motor de la torre
+			case 1: return SILVER;
+			case 2: return v > 0.165 ? WHITE : SILVER;                                 // radiadores del módulo de servicio
+			case 3: return WHITE;
+			case 4: return v > 0.37 && !quarter ? BLACK : WHITE;                       // franjas del S-IVB
+			case 5: return quarter ? WHITE : BLACK;                                    // interetapa
+			case 6: return v > 0.64 ? BLACK : v > 0.5 && v < 0.53 && facing(1.1) < 0.4 ? RED : WHITE; // S-II; la marca roja es la bandera
+			case 7:
+				if (v < 0.69) return BLACK;                                              // anillo entre etapas
+				if (v > 0.74 && v < 0.82) return quarter ? WHITE : BLACK;               // franjas del tanque
+				if (v > 0.83 && v < 0.9 && facing(0) < 0.3) return RED;                // letras "USA"
+				if (v > 0.9) return quarter ? BLACK : WHITE;                             // base de la primera etapa
+				return WHITE;
+			default: return BLACK;
+		}
+	}
+
+	// Cráteres fijos de la cara visible: [x, y, radio], en radios lunares.
+	const CRATERS: [number, number, number][] = Array.from({ length: 22 }, (_, k) => {
+		const ang = hash(k, 3, 7) * TAU, far = Math.sqrt(hash(k, 9, 2)) * 0.86;
+		return [Math.cos(ang) * far, Math.sin(ang) * far, 0.035 + hash(k, 5, 5) ** 2 * 0.15];
+	});
+	const STAR_INKS: RGB[] = [[129, 150, 210], [214, 201, 136], [214, 140, 120], [136, 204, 194]];
+
+	const canvas = document.querySelector<HTMLCanvasElement>('.different__art');
+	if (canvas)
+		mount(canvas, {
+			fontSize: (w) => (w < 520 ? 7 : w < 1100 ? 8 : 9),
+			weight: 500,
+			fps: 30,
+			stillAt: 12,
+			draw({ ctx, W, H, cw, ch, cols, rows }: Grid, t: number) {
+				// La nave está quieta en pantalla, pero todo a su alrededor se mueve: las estrellas pasan hacia atrás, la Luna
+				// se desliza despacio, la llama parpadea y la nave gira lentamente sobre su eje.
+				const wide = W > 820;
+				const R = wide ? Math.min(W * 0.15, H * 0.3) : Math.min(W * 0.26, H * 0.13);
+				const mx = wide ? W * 0.25 : W * 0.5, my = H * (wide ? 0.5 : 0.2);
+				const drift = t * 0.012; // la superficie lunar pasa por debajo, muy despacio
+				const heading = -0.4;    // la punta mira arriba a la derecha
+				const hx = Math.cos(heading), hy = Math.sin(heading);
+				const length = R * (wide ? 1.9 : 1.9);
+				const half = length / 13.5; // radio de la primera etapa, algo engordado para que se lea de lejos
+				// Un vaivén mínimo y una vibración fina: está en vuelo, no clavada.
+				const rx = mx + R * 0.2 + Math.sin(t * 0.5) * cw * 0.8 + (noise(t * 11, 0, 3) - 0.5) * cw * 0.35;
+				const ry = my + R * 0.34 + Math.cos(t * 0.37) * ch * 0.7;
+				const roll = t * 0.22;   // giro lento sobre el eje, como el control térmico pasivo del Apolo
+				const front = true;
+				// El Sol está arriba a la izquierda y algo hacia el observador. Todas las sombras salen de esta misma dirección.
+				const sun: [number, number] = [-0.72, -0.42];
+				const SUN3 = [-0.69, -0.4, 0.6];
+				// Sombra que la nave arroja sobre la Luna: su silueta, desplazada en sentido contrario al Sol.
+				const cast = R * 0.2, shx = -sun[0] * cast, shy = -sun[1] * cast;
+				const shadowOf = (x: number, y: number) => {
+					const px = x - shx - rx, py = y - shy - ry;
+					const v = 0.5 - (px * hx + py * hy) / length;
+					if (v < -0.05 || v > 1.05) return 0;
+					const a = Math.abs((-px * hy + py * hx) / half), r = radiusAt(Math.max(0, Math.min(1, v)));
+					return 1 - smooth(r * 0.75, r * 1.5 + 0.25, a); // borde difuso: penumbra
+				};
+
+				const reach = length * 2.2; // la nave y su estela
+				const near = (x: number, y: number) => Math.abs(x - rx) < reach && Math.abs(y - ry) < reach;
+				type Cell = [string, string, string?];
+				const hull = (x: number, y: number): Cell | null => {
+					const px = x - rx, py = y - ry;
+					const u = (-px * hy + py * hx) / half, v = 0.5 - (px * hx + py * hy) / length;
+					const part = saturn(u, v, roll);
+					if (!part) return null;
+					// Normal del cilindro en ese punto: de ahí salen la cara iluminada, el lado en sombra y el brillo.
+					const un = Math.max(-1, Math.min(1, u / Math.max(radiusAt(v), Math.abs(u))));
+					const nz = Math.sqrt(1 - un * un);
+					const diffuse = Math.max(0, -hy * un * SUN3[0] + hx * un * SUN3[1] + nz * SUN3[2]);
+					const gloss = Math.pow(diffuse, 18) * 0.5;                 // reflejo estrecho del Sol
+					const moonshine = Math.max(0, un * 0.6 + 0.1) * 0.16;      // luz que rebota de la Luna en el lado oscuro
+					const glow = smooth(0.84, 1, v) * (0.35 + 0.2 * noise(t * 8, 0, 4)); // los motores tiñen la base
+					const lit = 0.16 + diffuse * 0.95 + moonshine;
+					const rgb: RGB = [part[0] + glow * 120, part[1] + glow * 46, part[2] - glow * 20];
+					return [RAMP[Math.max(3, Math.min(RAMP.length - 1, Math.round((0.28 + diffuse * 0.62 + gloss) * (RAMP.length - 1))))], ink(rgb, lit + gloss), ink(rgb, lit * 0.6)];
+				};
+				// Llama de los cinco F-1 y, detrás, una estela de gases que se abre y se enfría de blanco a naranja y a azul.
+				const flame = (x: number, y: number): Cell | null => {
+					const px = x - rx, py = y - ry;
+					const u = (-px * hy + py * hx) / half, back = 0.5 - (px * hx + py * hy) / length - 1;
+					if (back <= 0) return null;
+					const f = back / 0.4;
+					if (f < 1) {
+						const flick = noise(u * 2, f * 5 - t * 9, 5);
+						const core = 1 - Math.abs(u) / (1.35 * (1 - f * 0.72));
+						const heat = core * (1.15 - f) + (flick - 0.5) * 0.55;
+						if (core > 0 && heat >= 0.08) {
+							const h = clamp01(heat);
+							return [RAMP[Math.max(2, Math.round(h * (RAMP.length - 1)))], h > 0.62 ? 'rgb(255,244,214)' : h > 0.32 ? 'rgb(255,186,96)' : 'rgb(222,96,54)'];
+						}
+					}
+					const s = back / 1.5; // estela: hasta una vez y media el largo de la nave
+					if (s < 1 && Math.abs(u) < 1.2 + s * 5) {
+						const puff = noise(u * 0.9, s * 9 - t * 3.2, 9) * (1 - s) * smooth(1.2 + s * 5, 0.4, Math.abs(u));
+						if (puff > 0.3) return [puff > 0.52 ? '*' : puff > 0.4 ? '+' : ':', ink([lerp(255, 110, s), lerp(170, 130, s), lerp(90, 190, s)], 0.45 + puff * 0.9)];
+					}
+					return null;
+				};
+
+				const moon = (x: number, y: number): Cell | null => {
+					const dx = (x - mx) / R, dy = (y - my) / R, rr = dx * dx + dy * dy;
+					if (rr > 1) return null;
+					const nz = Math.sqrt(1 - rr);
+					const sx = dx + drift; // coordenada sobre la superficie, que se va corriendo
+					// Terminador suave: la cara de noche queda casi a oscuras, con un resto de luz de la Tierra.
+					const lit = smooth(-0.12, 0.85, dx * SUN3[0] + dy * SUN3[1] + nz * SUN3[2]);
+					// Mares de basalto, tierras altas moteadas y cráteres.
+					const sea = smooth(0.5, 0.6, noise(sx * 2 + 4, dy * 2 + 9, 1)) * smooth(0.95, 0.4, rr);
+					const grain = noise(sx * 9, dy * 9, 3) - 0.5;
+					let relief = 0;
+					for (const [cx, cy, cr] of CRATERS) {
+						// Los cráteres salen por un lado y vuelven a entrar por el otro.
+						const wx = ((((cx - drift + 1.3) % 2.6) + 2.6) % 2.6) - 1.3;
+						const ox = dx - wx, oy = dy - cy, d = Math.hypot(ox, oy) / cr;
+						if (d >= 2.6) continue;
+						// De cara al Sol: +1 en la pared que lo mira, -1 en la que le da la espalda.
+						const toward = d > 0.01 ? -(ox * sun[0] + oy * sun[1]) / (d * cr) : 0;
+						if (d < 0.8) relief += -0.16 - toward * 0.34 * smooth(0.1, 0.8, d);      // dentro: la pared del lado del Sol queda en sombra
+						else if (d < 1.15) relief += (0.3 + toward * 0.3) * (1 - Math.abs(d - 0.97) * 4); // borde: brilla donde mira al Sol
+						else if (cr > 0.1) relief += (noise(Math.atan2(oy, ox) * 5, cr * 40, 2) - 0.55) * (2.6 - d) * 0.3; // rayos
+					}
+					const shade = near(x - shx, y - shy) ? shadowOf(x, y) : 0;
+					const light = lit * (1 - shade * 0.72);
+					const tone = (0.07 + light * 1.05) * (1 - sea * 0.34) * (1 + relief * 0.7 * (0.35 + lit) + grain * 0.12);
+					const glyph = RAMP[Math.max(1, Math.min(RAMP.length - 1, Math.round((0.1 + light * 0.62 + relief * 0.4 * (0.3 + lit) - sea * 0.1 + grain * 0.1) * (RAMP.length - 1))))];
+					return [glyph, ink(MOON, tone), ink(MOON, tone * 0.5)];
+				};
+
+				const put = (cell: Cell, i: number, j: number) => {
+					if (cell[2]) { ctx.fillStyle = cell[2]; ctx.fillRect(i * cw, j * ch, cw + 0.5, ch + 0.5); }
+					ctx.fillStyle = cell[1];
+					ctx.fillText(cell[0], i * cw, j * ch);
+				};
+
+				for (let j = 0; j < rows; j++) {
+					for (let i = 0; i < cols; i++) {
+						const x = (i + 0.5) * cw, y = (j + 0.5) * ch;
+						const ground = moon(x, y);
+						// Por delante, el cohete tapa la Luna; por detrás, la Luna tapa el cohete.
+						if (near(x, y) && (front || !ground)) {
+							const body = hull(x, y);
+							if (body) { put(body, i, j); continue; }
+							const fire = flame(x, y);
+							if (fire) {
+								if (ground?.[2]) { ctx.fillStyle = ground[2]; ctx.fillRect(i * cw, j * ch, cw + 0.5, ch + 0.5); } // la llama no abre huecos en la Luna
+								put(fire, i, j);
+								continue;
+							}
+						}
+						if (ground) { put(ground, i, j); continue; }
+
+						// Estrellas que pasan hacia atrás por carriles paralelos al rumbo: las lejanas, lentas y como puntos;
+						// las cercanas, rápidas y con estela. Eso es lo que hace que la nave parezca avanzar.
+						const along = x * hx + y * hy, lane = Math.floor((-x * hy + y * hx) / (ch * 1.15));
+						const speed = 14 + hash(lane, 3, 11) ** 2 * 190;
+						const slot = Math.floor((along + t * speed) / (cw * 1.6));
+						const star = hash(lane, slot, 61);
+						if (star > 0.9962) {
+							ctx.fillStyle = ink(STAR_INKS[(hash(lane, slot, 29) * 4) | 0], speed > 90 ? 1 : 0.55 + 0.45 * Math.sin(t * 1.3 + star * 900));
+							ctx.fillText(speed > 90 ? '*' : speed > 40 ? '+' : '.', i * cw, j * ch);
+						} else if (speed > 60) {
+							// Estela: las celdas que la estrella acaba de dejar atrás.
+							const tail = Math.min(5, Math.floor(speed / 34));
+							for (let n = 1; n <= tail; n++)
+								if (hash(lane, slot - n, 61) > 0.9962) {
+									ctx.fillStyle = ink([120, 140, 200], 0.75 - n * 0.12);
+									ctx.fillText(n < 3 ? '-' : '.', i * cw, j * ch);
+									break;
+								}
+						}
+					}
+				}
+
+				// La Tierra, lejos: azul, con continentes, nubes y la cara de noche hacia la derecha.
+				const ex = wide ? W * 0.09 : W * 0.82, ey = H * 0.15, er = Math.max(cw * 3, R * 0.24);
+				for (let j = Math.floor((ey - er) / ch); j <= (ey + er) / ch; j++)
+					for (let i = Math.floor((ex - er) / cw); i <= (ex + er) / cw; i++) {
+						const dx = ((i + 0.5) * cw - ex) / er, dy = ((j + 0.5) * ch - ey) / er;
+						if (dx * dx + dy * dy > 1) continue;
+						const lit = smooth(-0.15, 0.8, dx * SUN3[0] + dy * SUN3[1] + Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy)) * SUN3[2]);
+						const land = noise(dx * 2.2 + 3 + t * 0.02, dy * 2.2 + 8, 2) > 0.56;
+						const cloud = noise(dx * 3 + t * 0.03, dy * 4, 6) > 0.62;
+						const rgb: RGB = cloud ? [236, 242, 250] : land ? [70, 180, 110] : [64, 150, 255];
+						put([lit > 0.55 ? '#' : lit > 0.25 ? '=' : ':', ink(rgb, 0.12 + lit * 1.05), ink(rgb, (0.08 + lit * 0.9) * 0.5)], i, j);
+					}
+
+				// De vez en cuando, una estrella fugaz cruza el cielo de arriba.
+				const lap = t / 11, shot = lap - Math.floor(lap);
+				if (shot < 0.09) {
+					const seed = Math.floor(lap), k = shot / 0.09;
+					const sx = W * (0.15 + hash(seed, 1, 1) * 0.7) + k * W * 0.16, sy = H * (0.06 + hash(seed, 2, 2) * 0.2) + k * H * 0.09;
+					for (let n = 0; n < 9; n++) {
+						ctx.fillStyle = ink([230, 236, 255], (1 - n / 9) * (1 - Math.abs(k - 0.5) * 1.6));
+						ctx.fillText(n === 0 ? '*' : n < 4 ? '-' : '.', sx - n * cw * 1.6, sy - n * ch * 0.5);
+					}
+				}
+			},
+		});
+</script>

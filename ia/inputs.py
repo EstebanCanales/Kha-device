@@ -88,6 +88,20 @@ def build_space_input(analysis: dict) -> SpecialistInput:
         elif chamber["status"] == "insufficient_data":
             text += " Pocas lecturas para comparar su ritmo."
         facts.append(Fact(chamber["sensor"], text, flag))
+    # Contexto ambiental de la NASA: aparte de la dosimetría personal, y nunca una dosis.
+    weather = analysis.get("space_weather") or {}
+    events = weather.get("event_count", 0) if weather.get("status") == "ok" else 0
+    if weather.get("status") == "ok":
+        span = f"entre {weather['start_date']} y {weather['end_date']}"
+        if events:
+            times = ", ".join(t[:16].replace("T", " ") + " UTC" for t in weather["event_times"][:5])
+            text = (
+                f"Contexto espacial (NASA DONKI): {events} evento(s) de aumento de radiación en los cinturones (RBE) {span}: {times}. "
+                "Es contexto ambiental, no dosis personal."
+            )
+        else:
+            text = f"Contexto espacial (NASA DONKI): sin eventos RBE {span}. Esto no significa radiación cero."
+        facts.append(Fact("nasa", text))
     gravity = analysis["gravity_context"]
     if gravity == "unknown":
         facts.append(Fact("gravity", "Contexto de gravedad: no registrado.", "unknown_context"))
@@ -104,4 +118,6 @@ def build_space_input(analysis: dict) -> SpecialistInput:
         headline = f"Sin cambios en el ritmo de dosis ({len(chambers)} cámaras)."
     if any(c["counter_decreased"] for c in chambers):
         headline += " Un contador disminuyó: revisar los datos."
+    if events:
+        headline += f" La NASA registró {events} evento(s) RBE en la semana hasta la última lectura (contexto, no dosis personal)."
     return SpecialistInput("space", facts, analysis["source"], {"gravity_context": gravity}, headline)

@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # lets the script import monitoring.demo_data
 
-from monitoring.demo_data import CAD, VITALS, generate  # noqa: E402
+from monitoring.demo_data import CAD, DEFAULT_MINUTES, STEP_SECONDS, VITALS, generate  # noqa: E402
 
 BATCH = 100  # backend limit per request
 
@@ -60,16 +60,16 @@ def main():
     parser.add_argument("--session", default="session-kha-001")
     parser.add_argument("--epoch-high", required=True, help="epoch_high printed by setup_kha_devices")
     parser.add_argument("--epoch-low", required=True, help="epoch_low printed by setup_kha_devices")
-    parser.add_argument("--minutes", type=int, default=60, help="History to generate, ending now")
-    parser.add_argument("--step-seconds", type=int, default=30)
+    parser.add_argument("--minutes", type=int, default=DEFAULT_MINUTES, help="History to generate, ending now")
+    parser.add_argument("--step-seconds", type=int, default=STEP_SECONDS, help="Seconds between samples (default: 1800, one every 30 minutes)")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--scenario", choices=("baseline", "stress"), default="stress",
                         help="stress shifts the last 30%% of the window away from the early baseline")
     parser.add_argument("--dropout", type=float, default=0.02, help="Chance of a missing heart-rate reading")
     parser.add_argument("--start-at", help="Fixed ISO timestamp (with timezone) for the first sample")
     args = parser.parse_args()
-    if not 1 <= args.minutes <= 600 or not 5 <= args.step_seconds <= 3600:
-        parser.error("Use --minutes 1..600 and --step-seconds 5..3600.")
+    if not 1 <= args.minutes <= 10080 or not 5 <= args.step_seconds <= 3600:
+        parser.error("Use --minutes 1..10080 (7 days) and --step-seconds 5..3600.")
     vitals_token, cad_token = os.getenv("VITALS_DEVICE_TOKEN"), os.getenv("CAD_DEVICE_TOKEN")
     if not vitals_token or not cad_token:
         parser.error("Set VITALS_DEVICE_TOKEN and CAD_DEVICE_TOKEN in the environment.")
