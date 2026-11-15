@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from monitoring.dosimeter_profile import DEVICE_ID
 from monitoring.models import Device, Measurement
-from monitoring.sensors.dosimeter import Journal, make_sample
+from scripts.dosimeter import Journal, make_sample
 
 from .fixtures import TelemetryFixtures
 

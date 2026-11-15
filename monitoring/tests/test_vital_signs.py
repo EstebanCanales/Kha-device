@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from monitoring.models import Measurement
-from monitoring.sensors.vital_signs import make_event
+from scripts.vital_signs import make_event
 
 from .fixtures import TelemetryFixtures
 

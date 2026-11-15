@@ -81,7 +81,7 @@ The local smoke test used SQLite; PostgreSQL constraints and concurrent retries 
 
 ## vital_signs simulator endpoint
 
-`POST /api/v1/telemetry/vital-signs/` accepts the existing `demo.v1` events from `monitoring/sensors/vital_signs.py`. It stores five separate measurements per event: heart rate, pulse rate, SpO₂, respiratory rate, and **skin** temperature. This is a synthetic adapter, not a verified ADI watch protocol or Wavetool importer. Raw signals and activity outputs described for the watch are not emitted by this simulator.
+`POST /api/v1/telemetry/vital-signs/` accepts the existing `demo.v1` events from `scripts/vital_signs.py`. It stores five separate measurements per event: heart rate, pulse rate, SpO₂, respiratory rate, and **skin** temperature. This is a synthetic adapter, not a verified ADI watch protocol or Wavetool importer. Raw signals and activity outputs described for the watch are not emitted by this simulator.
 
 Create a session (or use `seed_demo --reader YOUR_USERNAME`), then configure its simulated watch:
 
@@ -94,7 +94,7 @@ uv run python manage.py provision_device_token studywatch-sim-001
 Set `TELEMETRY_AUTHORIZATION` to `Device CREDENTIAL_UUID:SECRET` using the credential printed once by the command. Start Django with `uv run python manage.py runserver`, then send:
 
 ```bash
-uv run python monitoring/sensors/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
+uv run python scripts/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
 ```
 
 The endpoint resolves the session from the registered device assignment at `measured_at`. The random run ID inside `event_id` is not a monitoring-session identifier. HTTP 201 means stored, 200 means an identical retry, and 409 means the same event identity was reused with different readings. `signal-loss` stores nulls; `invalid` deliberately produces rejected events. A credential cannot send for another device or a hardware profile. Read results through the existing session history endpoint with `source=simulated`.

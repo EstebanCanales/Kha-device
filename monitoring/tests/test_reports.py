@@ -13,8 +13,8 @@ from rest_framework.test import APIClient
 from monitoring.dosimeter_profile import DEVICE_ID
 from monitoring.models import Device, Measurement
 from monitoring.reports import build_report
-from monitoring.sensors.dosimeter import make_sample
-from monitoring.sensors.vital_signs import make_event
+from scripts.dosimeter import make_sample
+from scripts.vital_signs import make_event
 
 from .fixtures import TelemetryFixtures
 

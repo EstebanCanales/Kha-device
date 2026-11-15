@@ -17,8 +17,8 @@ uv run python manage.py provision_device_token dosimeter-detail-sim-001
 Use the credentials as documented in the vital-sign simulator and [dosimeter guide](dosimeter.md): `TELEMETRY_AUTHORIZATION="Device CREDENTIAL_UUID:SECRET"` for the watch, and `DOSIMETER_DEVICE_TOKEN="CREDENTIAL_UUID:SECRET"` for the dosimeter. These must be different device credentials. Start Django and run both simulators:
 
 ```bash
-uv run python monitoring/sensors/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
-uv run python -m monitoring.sensors.dosimeter --config /tmp/dosimeter-config.json --journal /tmp/dosimeter-history.sqlite3 --url http://127.0.0.1:8000/api/v1/telemetry/batches/ --count 10 --interval 1 --scenario spike
+uv run python scripts/vital_signs.py --url http://127.0.0.1:8000/api/v1/telemetry/vital-signs/ --samples 10 --interval 1 --scenario baseline
+uv run python -m scripts.dosimeter --config /tmp/dosimeter-config.json --journal /tmp/dosimeter-history.sqlite3 --url http://127.0.0.1:8000/api/v1/telemetry/batches/ --count 10 --interval 1 --scenario spike
 ```
 
 They can run sequentially or in separate terminals. Their capture timestamps need not match. Select a report window containing both runs. Existing harness/dosimeter demo readings are also included when their metrics match the report domains.

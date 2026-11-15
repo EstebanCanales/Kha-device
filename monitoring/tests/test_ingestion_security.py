@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from monitoring.models import Device, Measurement
-from monitoring.sensors.vital_signs import make_event
+from scripts.vital_signs import make_event
 
 from .fixtures import TelemetryFixtures
 

@@ -1,6 +1,6 @@
 """Synthetic dosimeter with a durable desktop journal, NOT a FRAM/DIS driver.
 
-Run with python -m monitoring.sensors.dosimeter --help.
+Run with python -m scripts.dosimeter --help.
 """
 
 import argparse

@@ -33,7 +33,7 @@ uv run python manage.py provision_device_token dosimeter-detail-sim-001
 Set `DOSIMETER_DEVICE_TOKEN` to the printed `credential UUID:secret` pair through your environment. No credentials are stored in the configuration or journal.
 
 ```bash
-uv run python -m monitoring.sensors.dosimeter \
+uv run python -m scripts.dosimeter \
   --config /tmp/dosimeter-config.json --journal /tmp/dosimeter-history.sqlite3 \
   --url http://127.0.0.1:8000/api/v1/telemetry/batches/ \
   --count 10 --interval 1 --seed 7 --scenario spike --duplicate
@@ -44,7 +44,7 @@ Every capture is committed locally before HTTP delivery. A successful backend in
 Omit `--url` to capture offline. Later replay pending records, including after a process restart:
 
 ```bash
-uv run python -m monitoring.sensors.dosimeter \
+uv run python -m scripts.dosimeter \
   --config /tmp/dosimeter-config.json --journal /tmp/dosimeter-history.sqlite3 \
   --url http://127.0.0.1:8000/api/v1/telemetry/batches/ --replay-only
 ```
