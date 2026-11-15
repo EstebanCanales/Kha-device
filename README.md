@@ -110,3 +110,13 @@ The new [dosimeter simulator and run guide](docs/dosimeter.md) records absorbed 
 ## Combined reports for model input
 
 `GET /api/v1/sessions/{uuid}/report/?source=simulated&observed_from=START&observed_to=END` combines stored vital-sign and dosimeter readings from the same session. It returns a single downloadable JSON document (`combined-telemetry-report.v2`) with `vital_signs`, `body_temperature`, and `dosimeter` categories. Every reading carries a `category` tag. Body temperature currently means skin temperature; the dosimeter’s internal temperature stays in the dosimeter category. Add `&output=text` for readable model input. Use timezone-aware dates and an authorized human account. Reports preserve quality, units, timestamps, and counter epochs, and explicitly identify missing domains. Limits: 31 days and 1,000 readings per report, with no silent truncation. See the [combined report guide](docs/combined-reports.md) for setup, export, and internal Python usage. This functionality generates reports only; it does not run AI models.
+
+## Quick automated endpoint tests
+
+All tests live in [`monitoring/tests/`](monitoring/tests/README.md). Run the isolated suite with no server or hardware:
+
+```bash
+uv run --locked python manage.py test monitoring.tests --settings=config.test_settings
+```
+
+This uses an in-memory SQLite database and a test-only fast password hasher. For one area, replace `monitoring.tests` with `monitoring.tests.test_reports`, `monitoring.tests.test_configuration`, or another module listed in the test guide. See [endpoint analysis and coverage](docs/endpoint-tests.md) for the full route inventory and limitations.

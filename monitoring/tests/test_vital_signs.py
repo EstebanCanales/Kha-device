@@ -6,16 +6,17 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
-from . import test_api
-from .models import Measurement
-from .sensors.vital_signs import make_event
+from monitoring.models import Measurement
+from monitoring.sensors.vital_signs import make_event
+
+from .fixtures import TelemetryFixtures
 
 
-class VitalSignsTests(TestCase):
+class VitalSignsTests(TelemetryFixtures, TestCase):
     def setUp(self):
-        test_api.TelemetryAPITests.setUp(self)
+        super().setUp()
         call_command("setup_vital_signs", self.session.identifier, verbosity=0)
-        from .models import Device
+        from monitoring.models import Device
         self.credential.device = Device.objects.get(identifier="studywatch-sim-001")
         self.credential.save()
 

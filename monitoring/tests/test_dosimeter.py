@@ -9,15 +9,16 @@ from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from . import test_api
-from .dosimeter_profile import DEVICE_ID
-from .models import Device, Measurement
-from .sensors.dosimeter import Journal, make_sample
+from monitoring.dosimeter_profile import DEVICE_ID
+from monitoring.models import Device, Measurement
+from monitoring.sensors.dosimeter import Journal, make_sample
+
+from .fixtures import TelemetryFixtures
 
 
-class DosimeterTests(TestCase):
+class DosimeterTests(TelemetryFixtures, TestCase):
     def setUp(self):
-        test_api.TelemetryAPITests.setUp(self)
+        super().setUp()
         output = io.StringIO()
         self.reset = self.now - timedelta(hours=1)
         call_command("setup_dosimeter", self.session.identifier, reset_at=self.reset.isoformat(), stdout=output)
@@ -73,7 +74,7 @@ class DosimeterTests(TestCase):
 
     def test_units_and_status_validation(self):
         packet, _ = make_sample(self.config, self.now)
-        from .models import SensorCapability
+        from monitoring.models import SensorCapability
         SensorCapability.objects.create(sensor=Device.objects.get(identifier=DEVICE_ID).sensors.get(channel="absorbed_dose_rate"), metric="absorbed_dose_rate", unit="uGy/min", enabled=True)
         packet["readings"][0]["unit"] = "uGy/min"
         self.assertEqual(self.send(packet).status_code, 201)

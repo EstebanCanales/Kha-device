@@ -165,7 +165,10 @@ def _history_filters(request, session):
     for name, lookup in (("observed_from", "gte"), ("observed_to", "lte")):
         raw = request.query_params.get(name)
         if raw:
-            instant = parse_datetime(raw)
+            try:
+                instant = parse_datetime(raw)
+            except ValueError:
+                instant = None
             if instant is None or not is_aware(instant):
                 raise ValidationError({name: "Use an ISO 8601 timestamp with timezone."})
             readings = readings.filter(**{f"packet__observed_at__{lookup}": instant})

@@ -10,17 +10,18 @@ from django.test import TestCase
 from rest_framework.exceptions import NotFound
 from rest_framework.test import APIClient
 
-from . import test_api
-from .dosimeter_profile import DEVICE_ID
-from .models import Device, Measurement
-from .reports import build_report
-from .sensors.dosimeter import make_sample
-from .sensors.vital_signs import make_event
+from monitoring.dosimeter_profile import DEVICE_ID
+from monitoring.models import Device, Measurement
+from monitoring.reports import build_report
+from monitoring.sensors.dosimeter import make_sample
+from monitoring.sensors.vital_signs import make_event
+
+from .fixtures import TelemetryFixtures
 
 
-class CombinedReportTests(TestCase):
+class CombinedReportTests(TelemetryFixtures, TestCase):
     def setUp(self):
-        test_api.TelemetryAPITests.setUp(self)
+        super().setUp()
         out = io.StringIO()
         call_command("setup_dosimeter", self.session.identifier, reset_at=(self.now - timedelta(hours=1)).isoformat(), stdout=out)
         self.config = json.loads(out.getvalue())

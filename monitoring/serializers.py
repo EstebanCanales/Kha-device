@@ -151,6 +151,9 @@ class SessionDeviceSerializer(CleanModelSerializer):
 class CounterEpochSerializer(CleanModelSerializer):
     class Meta:
         model = CounterEpoch
+        # full_clean() validates constraints using the complete instance on PATCH.
+        # DRF conditional uniqueness validation expects omitted ended_at in attrs.
+        validators = []
         fields = ("id", "identifier", "assignment", "sensor", "started_at", "ended_at", "reference")
         read_only_fields = ("id", "identifier")
 
