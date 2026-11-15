@@ -107,6 +107,16 @@ See [normal sensor sending scenario](docs/sensor-sending-scenario.md) for the se
 
 The new [dosimeter simulator and run guide](docs/dosimeter.md) records absorbed dose rate, cumulative absorbed dose with reset epochs, exposure history and increases, reading/mission timing, internal temperature, and synthetic DIS/storage status. It sends through the existing authenticated batch endpoint and keeps a durable local journal for offline replay. SQLite stands in for device storage; physical FRAM and DIS integration require hardware specifications.
 
+## NASA radiation context
+
+Set `RADATION_API_KEY` in the environment to fetch NASA DONKI radiation-belt enhancement events. From the repository root:
+
+```bash
+uv run python -m scripts.nasa_radiation --start-date 2024-05-01 --end-date 2024-05-15
+```
+
+Authorized session readers can also call `GET /api/v1/sessions/{uuid}/radiation-context/?start_date=2024-05-01&end_date=2024-05-15`. These are environmental events, not personal dose readings; the response is separate from simulated dosimeter telemetry. See [configuration, response semantics, and limits](docs/dosimeter.md#nasa-radiation-belt-context).
+
 ## Combined reports for model input
 
 `GET /api/v1/sessions/{uuid}/report/?source=simulated&observed_from=START&observed_to=END` combines stored vital-sign and dosimeter readings from the same session. It returns a single downloadable JSON document (`combined-telemetry-report.v2`) with `vital_signs`, `body_temperature`, and `dosimeter` categories. Every reading carries a `category` tag. Body temperature currently means skin temperature; the dosimeter’s internal temperature stays in the dosimeter category. Add `&output=text` for readable model input. Use timezone-aware dates and an authorized human account. Reports preserve quality, units, timestamps, and counter epochs, and explicitly identify missing domains. Limits: 31 days and 1,000 readings per report, with no silent truncation. See the [combined report guide](docs/combined-reports.md) for setup, export, and internal Python usage. This functionality generates reports only; it does not run AI models.

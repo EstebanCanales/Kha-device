@@ -65,3 +65,29 @@ Omit `metric` for all readings; follow pagination links. The session identifies 
 ## Hardware work still needed
 
 Replace the synthetic acquisition and desktop journal with documented hardware adapters once the actual controller, DIS dosimeter protocol, calibration/quantity, FRAM model/bus/address/capacity, clock, and power-loss behavior are supplied. The desktop journal is not a FRAM emulator and does not validate wear, capacity, bus timing, power-loss recovery, or instrument compatibility. It is single-process and has no retention/deletion policy. No physical dosimeter, space environment, clinical use, or PostgreSQL concurrency is validated by this simulator.
+
+## NASA radiation-belt context
+
+NASA DONKI's `RBE` endpoint supplies Radiation Belt Enhancement **events**. Its response includes `rbeID`, `eventTime`, observing instruments, and linked events/notifications; it does not supply personal absorbed dose, cumulative dose, or dose rate. We preserve these event objects as external context without converting them into `Measurement` records or changing the simulator's synthetic values. A match in time does not establish astronaut exposure or spatial co-location. An empty event list does not mean zero radiation.
+
+Set `RADATION_API_KEY` in the shell environment before starting Django or the script (the spelling is intentional). `.env.example` documents the variable; `.env` is not loaded automatically. There is no automatic `DEMO_KEY` fallback. The key is sent only to NASA, never included in the JSON output or application error messages. No participant identifiers or telemetry are sent to NASA.
+
+Fetch a JSON snapshot from the repository root:
+
+```bash
+uv run python -m scripts.nasa_radiation --start-date 2024-05-01 --end-date 2024-05-15 > /tmp/nasa-radiation-context.json
+```
+
+Or query through the backend with an authorized human account:
+
+```bash
+curl -u YOUR_USERNAME 'http://127.0.0.1:8000/api/v1/sessions/SESSION_UUID/radiation-context/?start_date=2024-05-01&end_date=2024-05-15'
+```
+
+Both dates are required, in `YYYY-MM-DD`, inclusive and UTC, with at most 31 calendar days. Select dates relevant to your session; these are global environmental events and are not automatically restricted to session times. The response identifies `source=nasa_donki`, `event_type=RBE`, `personal_dose_available=false`, `fetched_at`, the requested window, event count, and original event objects ordered by event time and ID. This source is deliberately separate from telemetry's `hardware`/`simulated` classification. The combined telemetry report remains a report of stored measurements; fetch this context separately when needed.
+
+The backend checks session access before fetching or reading its cache. It caches successful results (including empty searches) for 15 minutes using Django's configured cache, and limits requests to 30/minute per human user. The default cache is local to each server process. Results are not persisted in the database; redirect the script output to retain a snapshot. The script makes one uncached request. The client uses a 15-second network timeout, a 2 MiB response limit, and a 1,000-event limit; oversized/malformed results fail rather than being silently truncated.
+
+Invalid windows return `400`; authentication and session access use the existing `401`/`403`/`404` behavior. Local throttling returns `429`. Missing configuration, NASA authentication/quota errors, network failures, and malformed upstream data return `503`, never an empty success or a simulated fallback. Failed responses are not cached. Retry after correcting configuration or allowing the upstream service/quota to recover.
+
+References: [NASA DONKI overview and research-use context](https://ccmc.gsfc.nasa.gov/tools/DONKI/), [NASA DONKI API reference](https://ccmc.gsfc.nasa.gov/DONKI/api/). No calibration or validated model linking these events to personal dose has been provided.

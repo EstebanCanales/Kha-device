@@ -29,7 +29,7 @@ class PublicEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         paths = response.data["paths"]
         expected = {"/api/v1/schema/", "/api/v1/telemetry/batches/", "/api/v1/telemetry/vital-signs/", "/api/v1/sessions/", "/api/v1/sessions/{id}/"}
-        expected.update(f"/api/v1/sessions/{{id}}/{action}/" for action in ("measurements", "latest", "report"))
+        expected.update(f"/api/v1/sessions/{{id}}/{action}/" for action in ("measurements", "latest", "report", "radiation-context"))
         for resource in ("participants", "devices", "sensors", "capabilities", "assignments", "counter-epochs"):
             expected.update({f"/api/v1/config/{resource}/", f"/api/v1/config/{resource}/{{id}}/"})
         self.assertEqual(set(paths), expected)

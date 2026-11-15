@@ -34,6 +34,7 @@ Use `--failfast` to stop at the first failure. The process returns a nonzero exi
 | `test_configuration.py` | All six configuration resources: list/detail/create/PUT/PATCH/delete, staff restrictions, protected deletion, CSRF, invalid units/assignments/epochs |
 | `test_sessions.py` | Session CRUD/access isolation, Basic authentication, history filters/pagination, observation ordering, latest readings, read-only routes |
 | `test_vital_signs.py` | Five-metric adapter, duplicate/conflict behavior, missing and invalid scenarios |
+| `test_nasa_radiation.py` | NASA client validation, secret-safe errors, authorization, caching, throttling, and separation from telemetry |
 | `test_dosimeter.py` | Dosimeter persistence, reset epochs, status/unit validation, durable offline replay |
 | `test_reports.py` | Both data streams, three category tags, JSON/text, nulls, authorization, source separation, report bounds/limits and schema |
 | `test_operations.py` | Health/readiness, simulated database outage, complete API schema inventory, Admin access and telemetry immutability |

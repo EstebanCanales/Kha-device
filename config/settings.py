@@ -154,3 +154,6 @@ SPECTACULAR_SETTINGS['ENUM_NAME_OVERRIDES'] = {
     'SimulatorQualityEnum': ['synthetic', 'missing', 'deliberately_invalid'],
     'MeasurementQualityEnum': [('valid', 'Valid'), ('unreliable', 'Unreliable'), ('missing', 'Missing')],
 }
+
+# NASA DONKI key; preserve the configured environment variable spelling.
+RADATION_API_KEY = os.getenv("RADATION_API_KEY", "")

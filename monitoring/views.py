@@ -4,6 +4,7 @@ from datetime import timedelta
 from io import BytesIO
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import IntegrityError, connection
 from django.db.models import ProtectedError
 from django.http import HttpResponse, JsonResponse
@@ -19,6 +20,7 @@ from rest_framework.parsers import JSONParser
 from rest_framework.permissions import BasePermission
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from .authentication import DeviceAuthentication, DeviceRateThrottle
@@ -34,6 +36,8 @@ from .models import (
     SensorCapability,
     SessionDevice,
 )
+from .nasa_radiation import RadiationUnavailable, fetch_radiation_events
+from .radiation_serializers import RadiationContextSerializer, RadiationQuerySerializer
 from .report_serializers import CombinedReportSerializer, ReportQuerySerializer
 from .reports import build_report, report_as_text
 from .serializers import (
@@ -180,6 +184,11 @@ def _history_filters(request, session):
     return readings
 
 
+class RadiationRateThrottle(UserRateThrottle):
+    rate = "30/min"
+    scope = "nasa_radiation"
+
+
 class SessionViewSet(viewsets.ModelViewSet):
     authentication_classes = (SessionAuthentication, BasicAuthentication)
     permission_classes = (IsStaffOrSessionReader,)
@@ -202,6 +211,32 @@ class SessionViewSet(viewsets.ModelViewSet):
             instance.delete()
         except ProtectedError as error:
             raise Conflict() from error
+
+    @extend_schema(
+        parameters=[RadiationQuerySerializer],
+        responses={200: RadiationContextSerializer, 503: str},
+        description="NASA DONKI RBE context for an authorized session. UTC dates, at most 31 inclusive days. Environmental events are not personal dosimeter measurements. Cached for 15 minutes; fetched_at identifies retrieval time.",
+    )
+    @action(detail=True, methods=["get"], url_path="radiation-context", pagination_class=None,
+            filter_backends=[], throttle_classes=[RadiationRateThrottle])
+    def radiation_context(self, request, pk=None):
+        self.get_object()  # Authorize before cache access or any upstream request.
+        query = RadiationQuerySerializer(data=request.query_params.dict())
+        query.is_valid(raise_exception=True)
+        options = query.validated_data
+        if not settings.RADATION_API_KEY:
+            return Response({"detail": "RADATION_API_KEY is not configured."}, status=503)
+        cache_key = f"nasa-rbe:{options['start_date']}:{options['end_date']}"
+        result = cache.get(cache_key)
+        if result is None:
+            try:
+                result = fetch_radiation_events(**options, api_key=settings.RADATION_API_KEY)
+            except RadiationUnavailable as error:
+                return Response({"detail": str(error)}, status=503)
+            cache.set(cache_key, result, timeout=900)
+        response = Response(result)
+        response["Cache-Control"] = "no-store"
+        return response
 
     @extend_schema(
         parameters=[ReportQuerySerializer],

@@ -28,3 +28,10 @@ Pendiente antes de integrar equipos reales: modelos y fichas técnicas, magnitud
 - Internal report consumers must supply an active authorized Django user. Reports omit names/pseudonyms and credentials. Stored report retention and downstream model token budgets remain caller responsibilities.
 
 - Combined report v2 separates `body_temperature` from `vital_signs`, tags every series/reading/latest observation, and returns one JSON attachment by default. Internal circuit temperature remains dosimeter telemetry. Existing data and ingestion contracts do not change.
+
+## NASA DONKI radiation context
+
+- Use the requested `https://api.nasa.gov/DONKI/RBE` endpoint and `RADATION_API_KEY` environment variable. No dependency or database migration is required.
+- RBE records are external environmental events, not worn-dosimeter measurements. Preserve original event fields and retrieval provenance separately from hardware/simulated telemetry; do not derive Gy, Sv, rates, counters, or risk from events.
+- Provide a bounded client, `scripts/nasa_radiation.py`, and an authorized session `radiation-context` read action. No credentials or participant data appear in outputs/upstream queries, respectively.
+- Cache only successful results for 15 minutes; retain `fetched_at`. Explicitly report upstream failures instead of fabricating readings or silently falling back. Database persistence, spatial correlation, and incorporation into combined reports are outside this change.
