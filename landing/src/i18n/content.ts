@@ -19,7 +19,18 @@ const es = {
 		cta: 'Entrar a la app',
 		credit: 'Earthrise · Apolo 8 · 24 dic 1968 · redibujada en ASCII',
 	},
-	video: { label: 'Video de Kha-device 01', pending: 'Video · pendiente' },
+	video: {
+		label: 'Video de Kha-device 01',
+		eyebrow: 'Presentación',
+		title: 'Kha-device 01 en 30 segundos',
+		play: 'Reproducir',
+		pause: 'Pausar',
+		mute: 'Silenciar',
+		unmute: 'Activar sonido',
+		fullscreen: 'Pantalla completa',
+		seek: 'Posición del video',
+		sound: 'Con sonido',
+	},
 	different: {
 		title: '¿Qué nos hace diferentes?',
 		paragraphs: [
@@ -286,7 +297,18 @@ const en: Content = {
 		cta: 'Open the app',
 		credit: 'Earthrise · Apollo 8 · 24 Dec 1968 · redrawn in ASCII',
 	},
-	video: { label: 'Kha-device 01 video', pending: 'Video · coming soon' },
+	video: {
+		label: 'Kha-device 01 video',
+		eyebrow: 'Presentation',
+		title: 'Kha-device 01 in 30 seconds',
+		play: 'Play',
+		pause: 'Pause',
+		mute: 'Mute',
+		unmute: 'Unmute',
+		fullscreen: 'Full screen',
+		seek: 'Video position',
+		sound: 'With sound',
+	},
 	different: {
 		title: 'What makes us different?',
 		paragraphs: [
