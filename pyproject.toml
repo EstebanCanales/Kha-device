@@ -9,6 +9,16 @@ dependencies = [
     "psycopg[binary]>=3.2,<3.3",
 ]
 
+# Real Hugging Face models for ia/. Optional: the default engine needs none of this.
+# Install with `uv sync --extra ia`.
+[project.optional-dependencies]
+ia = [
+    "torch>=2.5",
+    "transformers>=4.50",
+    "peft>=0.14",
+    "accelerate>=1.0",
+]
+
 [tool.ruff]
 extend-exclude = ["monitoring/migrations"]
 

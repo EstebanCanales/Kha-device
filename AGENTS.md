@@ -21,6 +21,10 @@ Priorities:
 
 Do not implement frontend, firmware, diagnostics, medical alerts, AI, treatment recommendations, radiological-risk calculations, streaming, ECG processing, MQTT, queues, or distributed infrastructure without a concrete requirement.
 
+### Extensions approved on 2026-11-14
+
+The project owner explicitly asked for these, so they are no longer excluded above: a read-only operator dashboard at `/app/`, descriptive session analysis (`monitoring/analysis.py`), and the internal AI module (`ia/`). They stay inside the limits of this file: no diagnosis, no medical alerts or clinical thresholds, no radiological-risk calculation, no unit conversion, and simulated provenance stays explicit. See `docs/decisions.md`.
+
 ## Working rules
 
 - Read the README, applicable instructions, dependency files, configuration, migrations, and tests before editing.

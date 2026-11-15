@@ -15,10 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.urls import include, path
+from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView
 from rest_framework.routers import SimpleRouter
 
+from monitoring.app import app
 from monitoring.views import (
     CounterEpochViewSet,
     DeviceViewSet,
@@ -43,6 +46,10 @@ router.register("config/assignments", SessionDeviceViewSet)
 router.register("config/counter-epochs", CounterEpochViewSet)
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/app/', permanent=False)),
+    path('app/', app, name='app'),
+    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('admin/', admin.site.urls),
     path('api/v1/', include(router.urls)),
     path('api/v1/telemetry/batches/', TelemetryBatchView.as_view(), name='telemetry-batches'),

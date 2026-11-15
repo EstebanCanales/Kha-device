@@ -1,6 +1,7 @@
 ---
 // Pie de página: el logo redibujado en ASCII y los enlaces del proyecto.
 const repo = 'https://github.com/EstebanCanales/Kha-device';
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://127.0.0.1:8000/app/';
 const groups = [
 	{
 		title: 'En esta página',
@@ -16,6 +17,7 @@ const groups = [
 	{
 		title: 'Proyecto',
 		links: [
+			['Entrar a la app', appUrl],
 			['Repositorio en GitHub', repo],
 			['Módulo de IA', `${repo}/tree/main/ia`],
 		],

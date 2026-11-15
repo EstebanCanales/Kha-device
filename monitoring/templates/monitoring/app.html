@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>App · Kha-device 01</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Michroma&display=swap" rel="stylesheet" />
+	<style>
+		:root {
+			color-scheme: dark;
+			--sky: #070b17; --panel: #0b1124; --raised: #101833; --regolith: #d9d5d0; --soft: #a9adb8; --dim: #8790a4; --line: #323b55;
+			--ocean: #6fa8ff; --gold: #d8b46a; --coral: #f46e68; --teal: #78dcd2;
+			--display: 'Michroma', sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+		}
+		* { box-sizing: border-box; }
+		html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+		body { margin: 0; background: var(--sky); color: var(--regolith); font-family: var(--mono); font-size: 15px; }
+		button, select { font: inherit; color: inherit; }
+		button { cursor: pointer; }
+		:focus-visible { outline: 2px solid var(--ocean); outline-offset: 2px; }
+		[hidden] { display: none !important; }
+
+		/* Barra superior */
+		.top { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.25rem; padding: .8rem clamp(1rem, 4vw, 3rem); background: rgba(7, 11, 23, .94); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+		.brand { margin-right: auto; font: 400 .95rem/1 var(--display); letter-spacing: .04em; text-transform: uppercase; text-decoration: none; color: inherit; }
+		.brand span { color: var(--dim); }
+		.field { display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--soft); }
+		select { padding: .45rem .6rem; background: var(--panel); border: 1px solid var(--line); }
+		.seg { display: inline-flex; border: 1px solid var(--line); }
+		.seg button { padding: .45rem .8rem; border: 0; background: none; font-size: .8rem; color: var(--soft); }
+		.seg button[aria-pressed="true"] { background: var(--raised); color: var(--regolith); }
+		.live { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border: 1px solid var(--line); font-size: .75rem; color: var(--soft); }
+		.live i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--dim); }
+		.live[data-state="on"] i { background: var(--teal); animation: pulse 2s ease-in-out infinite; }
+		.live[data-state="off"] i { background: var(--coral); }
+		@keyframes pulse { 50% { opacity: .35; } }
+		.btn { padding: .45rem .85rem; border: 1px solid var(--line); background: none; font-size: .78rem; }
+		.btn:hover:not(:disabled) { border-color: var(--soft); }
+		.btn:disabled { color: var(--dim); cursor: wait; }
+		.btn.primary { border-color: var(--soft); }
+		.who { display: flex; align-items: center; gap: .6rem; font-size: .8rem; color: var(--soft); }
+		.who form { margin: 0; }
+
+		main { display: grid; gap: clamp(1.75rem, 4vw, 3rem); max-width: 78rem; margin: 0 auto; padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1rem, 4vw, 3rem) 4rem; }
+		h2 { margin: 0; font: 400 1.05rem/1.3 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+		h2.small { font-size: .9rem; }
+		.lead { margin: .4rem 0 0; max-width: 46rem; font-size: .88rem; line-height: 1.6; color: var(--soft); }
+		.head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem; }
+		.step { display: inline-block; margin-bottom: .6rem; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+
+		.banner { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; padding: .9rem 1.1rem; border: 1px solid var(--coral); background: rgba(244, 110, 104, .08); font-size: .85rem; line-height: 1.5; }
+		.banner p { margin: 0; flex: 1 1 20rem; }
+
+		/* Estado general y cifras de un vistazo */
+		.state { display: grid; grid-template-columns: auto 1fr; gap: 1.25rem 1.5rem; align-items: center; padding: clamp(1.1rem, 3vw, 1.75rem); border: 1px solid var(--line); background: var(--panel); }
+		.state .mark { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border: 1px solid var(--line); font-size: 1.4rem; color: var(--dim); }
+		.state[data-tone="stable"] .mark { color: var(--teal); border-color: var(--teal); }
+		.state[data-tone="change"] .mark { color: var(--coral); border-color: var(--coral); }
+		.state h1 { margin: 0; font: 400 clamp(1.1rem, 2.4vw, 1.5rem)/1.3 var(--display); letter-spacing: .02em; }
+		.state p { margin: .5rem 0 0; font-size: .85rem; line-height: 1.6; color: var(--soft); }
+		.kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .6rem; }
+		.kpi { display: block; padding: .65rem .8rem; border: 1px solid var(--line); border-left: 3px solid var(--line); background: var(--sky); color: inherit; text-decoration: none; }
+		.kpi:hover { border-color: var(--soft); }
+		.kpi[data-tone="stable"] { border-left-color: var(--teal); }
+		.kpi[data-tone="change"] { border-left-color: var(--coral); }
+		.kpi small { display: block; font-size: .66rem; letter-spacing: .04em; color: var(--dim); }
+		.kpi b { display: block; margin-top: .25rem; font: 400 1.15rem/1.2 var(--display); }
+		.kpi b span { font: 400 .7rem var(--mono); color: var(--soft); }
+		.kpi em { font-style: normal; font-size: .78rem; }
+		.kpi[data-tone="change"] em { color: var(--coral); }
+		.kpi[data-tone="stable"] em { color: var(--teal); }
+		.facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .76rem; color: var(--dim); }
+		.facts b { font-weight: 500; color: var(--soft); }
+
+		/* Lecturas */
+		.range { display: inline-flex; align-items: center; gap: .6rem; font-size: .78rem; color: var(--dim); }
+		.groups { display: grid; gap: clamp(1.75rem, 3vw, 2.5rem); }
+		.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr)); gap: 1rem; margin-top: 1rem; }
+		.card { padding: 1.1rem 1.2rem 1rem; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--line); scroll-margin-top: 5rem; }
+		.card[data-tone="stable"] { border-top-color: var(--teal); }
+		.card[data-tone="change"] { border-top-color: var(--coral); }
+		.card:target { box-shadow: 0 0 0 2px var(--ocean); }
+		.card header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem 1rem; }
+		.card h3 { margin: 0; font: 500 .88rem/1.4 var(--mono); }
+		.card .hint { display: block; font-size: .68rem; color: var(--dim); }
+		.pill { font-size: .74rem; color: var(--dim); }
+		.card[data-tone="stable"] .pill { color: var(--teal); }
+		.card[data-tone="change"] .pill { color: var(--coral); }
+		.value { margin: .6rem 0 0; font: 400 1.9rem/1 var(--display); }
+		.value span { margin-left: .35rem; font: 400 .8rem var(--mono); color: var(--soft); }
+		.base { margin: .4rem 0 0; font-size: .76rem; color: var(--soft); }
+
+		.plot { position: relative; height: 9.5rem; margin-top: .9rem; touch-action: pan-y; cursor: crosshair; }
+		.plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+		.plot .line { fill: none; stroke: var(--ocean); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+		.plot .area { fill: url(#fade); stroke: none; }
+		.plot .band { fill: rgba(120, 220, 210, .09); stroke: none; }
+		.plot .ref { fill: none; stroke: var(--dim); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+		.plot .onset { stroke: var(--coral); stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+		.plot .tag { position: absolute; font-size: .62rem; line-height: 1.3; color: var(--dim); pointer-events: none; }
+		.plot .tag.max { top: 0; right: .2rem; }
+		.plot .tag.min { bottom: 0; right: .2rem; }
+		.plot .tag.zone { left: .25rem; color: var(--teal); opacity: .85; }
+		.plot .tag.onset { top: 0; color: var(--coral); white-space: nowrap; }
+		.plot .tag.onset.before { transform: translateX(calc(-100% - .35rem)); }
+		.plot .tag.onset.after { transform: translateX(.35rem); }
+		.plot .cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--soft); opacity: 0; pointer-events: none; }
+		.plot .dot { position: absolute; width: .6rem; height: .6rem; margin: -.3rem 0 0 -.3rem; border-radius: 50%; background: var(--sky); border: 2px solid var(--regolith); opacity: 0; pointer-events: none; }
+		.plot .tip { position: absolute; top: .2rem; padding: .3rem .5rem; background: var(--raised); border: 1px solid var(--line); font-size: .72rem; white-space: nowrap; pointer-events: none; opacity: 0; transform: translateX(-50%); }
+		.plot:hover .cursor, .plot:hover .dot, .plot:hover .tip, .plot.touching .cursor, .plot.touching .dot, .plot.touching .tip { opacity: 1; }
+		.axis { display: flex; justify-content: space-between; margin: .35rem 0 0; font-size: .66rem; color: var(--dim); }
+		.stats { margin: .35rem 0 0; font-size: .68rem; color: var(--dim); }
+
+		/* Modelos de IA */
+		.chain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 1.1rem; align-items: stretch; }
+		.specialists { display: grid; gap: 1.1rem; }
+		.ai { position: relative; padding: 1.1rem 1.2rem; border: 1px solid var(--line); background: var(--panel); }
+		.ai h3 { margin: 0; font: 500 .95rem/1.3 var(--mono); }
+		.ai .model { display: block; margin-top: .15rem; font-size: .7rem; color: var(--dim); overflow-wrap: anywhere; }
+		.ai .body { margin-top: .8rem; font-size: .86rem; line-height: 1.65; color: var(--soft); }
+		.ai .body p { margin: 0 0 .6rem; }
+		.ai.salud { border-left: 3px solid var(--coral); }
+		.ai.astro { border-left: 3px solid var(--ocean); }
+		.ai.sintesis { border-left: 3px solid var(--regolith); background: var(--raised); }
+		.ai.sintesis::before { content: '←'; position: absolute; left: -1.1rem; top: 50%; color: var(--dim); transform: translateY(-50%); }
+		ul.list { margin: .3rem 0 0; padding: 0; list-style: none; }
+		ul.list li { position: relative; padding: .45rem 0 .45rem 1.1rem; border-bottom: 1px solid var(--line); }
+		ul.list li::before { content: '–'; position: absolute; left: 0; color: var(--dim); }
+		ul.list.key li { color: var(--regolith); }
+		ul.list.key li::before { content: '▲'; font-size: .65rem; top: .7rem; color: var(--coral); }
+		.sub { margin: 1rem 0 .2rem; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+		.badge { display: inline-block; margin-left: .6rem; padding: .15rem .5rem; border: 1px solid var(--line); font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); vertical-align: middle; }
+		.waiting { font-size: .84rem; line-height: 1.6; color: var(--dim); }
+		details { margin-top: .9rem; }
+		summary { cursor: pointer; font-size: .8rem; color: var(--soft); }
+		details > :not(summary) { margin-top: .6rem; }
+		.empty { padding: 1.25rem; border: 1px dashed var(--line); font-size: .84rem; line-height: 1.6; color: var(--dim); }
+		pre { margin: .6rem 0 0; padding: .8rem; overflow-x: auto; background: var(--panel); border: 1px solid var(--line); font-size: .76rem; line-height: 1.6; color: var(--soft); }
+		.help { padding: 1.1rem 1.2rem; border: 1px solid var(--line); }
+		.help ul { margin: .6rem 0 0; padding-left: 1.1rem; font-size: .84rem; line-height: 1.8; color: var(--soft); }
+
+		@media (max-width: 860px) {
+			.chain { grid-template-columns: 1fr; }
+			.ai.sintesis::before { content: none; }
+			.state { grid-template-columns: 1fr; }
+			.plot { height: 8rem; }
+		}
+		@media (prefers-reduced-motion: reduce) { .live[data-state="on"] i { animation: none; } html { scroll-behavior: auto; } }
+	</style>
+</head>
+<body>
+	<header class="top">
+		<a class="brand" href="/app/">Kha-device <span>01</span></a>
+		<div class="field" id="sessionBox"><label for="session">Sesión</label><select id="session"></select></div>
+		<div class="seg" role="group" aria-label="Origen de los datos">
+			<button type="button" data-source="simulated" aria-pressed="true" title="Datos de prueba generados por el simulador">Simulado</button>
+			<button type="button" data-source="hardware" aria-pressed="false" title="Datos de instrumentos reales">Hardware</button>
+		</div>
+		<span class="live" id="live" data-state="idle" role="status"><i></i><span id="liveText">Conectando…</span></span>
+		<button class="btn" id="pause" type="button">Pausar</button>
+		<div class="who">
+			<span>{{ request.user.get_username }}</span>
+			<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn" type="submit">Salir</button></form>
+		</div>
+	</header>
+
+	<main>
+		<div class="banner" id="banner" role="alert" hidden>
+			<p id="bannerText"></p>
+			<button class="btn primary" id="retry" type="button">Reintentar</button>
+		</div>
+
+		<section class="state" id="state" data-tone="idle" aria-live="polite">
+			<div class="mark" aria-hidden="true" id="stateMark">○</div>
+			<div>
+				<h1 id="stateTitle">Cargando…</h1>
+				<p id="stateText"></p>
+			</div>
+			<nav class="kpis" id="kpis" aria-label="Cifras de un vistazo" hidden></nav>
+			<div class="facts" id="facts"></div>
+		</section>
+
+		<section id="readings" hidden aria-labelledby="readTitle">
+			<div class="head">
+				<div>
+					<h2 id="readTitle">Lecturas</h2>
+					<p class="lead">Pasa el cursor por un gráfico para ver cada valor. La franja verde es la <b>zona habitual</b> de esta persona (su punto de partida más o menos 3 desviaciones); la línea punteada roja marca cuándo salió de ella.</p>
+				</div>
+				<div class="range" role="group" aria-label="Periodo del gráfico">
+					Mostrar
+					<div class="seg" id="range">
+						<button type="button" data-range="30" aria-pressed="false">30 min</button>
+						<button type="button" data-range="60" aria-pressed="false">1 h</button>
+						<button type="button" data-range="180" aria-pressed="true">3 h</button>
+					</div>
+				</div>
+			</div>
+			<div class="groups">
+				<div><h2 class="small">Signos vitales</h2><p class="lead">Dispositivo 2 · pulso, oxígeno, respiración y temperatura</p><div class="cards" id="cards-harness"></div></div>
+				<div><h2 class="small">Dosímetro</h2><p class="lead">Dispositivo 1 · radiación acumulada por cada cámara</p><div class="cards" id="cards-dosimeter"></div></div>
+			</div>
+		</section>
+
+		<section id="ai" hidden aria-labelledby="aiTitle">
+			<div class="head">
+				<div>
+					<h2 id="aiTitle">Lo que dicen los modelos <span class="badge" id="engine"></span></h2>
+					<p class="lead">Tres modelos de IA trabajan en cadena: <b>Salud</b> y <b>Astronomía</b> leen los datos por separado, y <b>Síntesis</b> junta ambos análisis en un resumen.</p>
+				</div>
+				<button class="btn primary" id="summarize" type="button">Actualizar análisis</button>
+			</div>
+			<div class="chain">
+				<div class="specialists">
+					<article class="ai salud">
+						<span class="step">Paso 1 · Datos médicos</span>
+						<h3>Salud</h3><span class="model" id="modelHealth"></span>
+						<div class="body" id="bodyHealth"><p class="waiting">Esperando análisis…</p></div>
+					</article>
+					<article class="ai astro">
+						<span class="step">Paso 2 · Datos espaciales</span>
+						<h3>Astronomía</h3><span class="model" id="modelSpace"></span>
+						<div class="body" id="bodySpace"><p class="waiting">Esperando análisis…</p></div>
+					</article>
+				</div>
+				<article class="ai sintesis">
+					<span class="step">Paso 3 · Resumen</span>
+					<h3>Síntesis</h3><span class="model" id="modelSynth"></span>
+					<div class="body" id="bodySynth"><p class="waiting">Esperando análisis…</p></div>
+				</article>
+			</div>
+		</section>
+
+		<section class="help">
+			<details>
+				<summary>¿Cómo leo esta pantalla?</summary>
+				<ul>
+					<li><b>Línea base:</b> cómo estaba esta persona al inicio de la sesión. Todo se compara contra eso, no contra valores "normales" de un manual.</li>
+					<li><b>▲ más alto / ▼ más bajo:</b> el valor reciente se alejó claramente de su punto de partida. No significa que haya un problema médico.</li>
+					<li><b>Dosis acumulada:</b> cada cámara del dosímetro es un contador propio; sus valores no se suman.</li>
+					<li><b>Simulado:</b> datos de prueba. Nada de esto es un diagnóstico ni una alerta médica.</li>
+				</ul>
+			</details>
+			<details id="demo">
+				<summary>¿No ves datos? Cómo enviar datos de prueba</summary>
+				<pre>uv run python manage.py setup_kha_devices --reader TU_USUARIO
+uv run python manage.py provision_device_token kha-vitals-sim-001
+uv run python manage.py provision_device_token cad-sim-001
+python3 scripts/simulate_kha.py --epoch-high … --epoch-low …</pre>
+			</details>
+		</section>
+	</main>
+
+{% verbatim %}
+	<script>
+		const $ = (id) => document.getElementById(id);
+		const el = (tag, attrs = {}, text) => {
+			const node = Object.assign(document.createElement(tag), attrs);
+			if (text !== undefined) node.textContent = text;
+			return node;
+		};
+		const NS = 'http://www.w3.org/2000/svg';
+		const svgEl = (tag, attrs = {}) => {
+			const node = document.createElementNS(NS, tag);
+			for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+			return node;
+		};
+		const LABELS = {
+			absorbed_dose_cumulative: 'Dosis acumulada', exposure_duration: 'Tiempo de exposición', internal_temperature: 'Temperatura interna del dosímetro',
+			heart_rate: 'Frecuencia cardíaca', spo2: 'Oxígeno en sangre (SpO₂)', respiratory_rate: 'Frecuencia respiratoria', skin_temperature: 'Temperatura de la piel',
+		};
+		const SHORT = { heart_rate: 'Pulso', spo2: 'SpO₂', respiratory_rate: 'Respiración', skin_temperature: 'Piel' };
+		const HIDDEN = new Set(['pulse_rate']);
+		const UNITS = { degC: '°C', 'breaths/min': 'resp/min', bpm: 'lpm' };
+		const PILLS = {
+			stable: ['●', 'Estable', 'stable'], shift_up: ['▲', 'Más alto que al inicio', 'change'], shift_down: ['▼', 'Más bajo que al inicio', 'change'],
+			rate_up: ['▲', 'Acumula más rápido que al inicio', 'change'], insufficient_data: ['○', 'Aún pocos datos', ''],
+		};
+		const REFRESH_MS = 15000;
+		const ZONE = 3; // desviaciones: el mismo umbral que usa el análisis
+		let source = 'simulated', range = 180, timer = 0, paused = false, busy = false, lastKey = '', last = null, ia = null;
+
+		const unit = (u) => UNITS[u] ?? u;
+		const num = (v) => Number(v).toLocaleString('es', { maximumFractionDigits: 3 });
+		const clock = (iso) => new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+		const hm = (iso) => new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+		const ago = (iso) => {
+			const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+			if (s < 90) return `hace ${s} s`;
+			if (s < 5400) return `hace ${Math.round(s / 60)} min`;
+			if (s < 172800) return `hace ${Math.round(s / 3600)} h`;
+			return `hace ${Math.round(s / 86400)} días`;
+		};
+		const chamber = (sensor) => (/high/.test(sensor) ? 'Cámara de alta resolución' : /low/.test(sensor) ? 'Cámara de baja resolución' : sensor);
+		const cookie = (name) => document.cookie.split('; ').find((c) => c.startsWith(name + '='))?.split('=')[1];
+
+		async function api(path, options = {}) {
+			let response;
+			try {
+				response = await fetch(path, {
+					credentials: 'same-origin', ...options,
+					headers: { 'X-CSRFToken': cookie('csrftoken') ?? '', ...(options.headers ?? {}) },
+				});
+			} catch {
+				throw new Error('No se pudo conectar con el servidor. Comprueba que el backend esté en marcha (uv run python manage.py runserver) y que esta página se abra desde su misma dirección.');
+			}
+			if (response.status === 401 || response.status === 403) {
+				location.href = '/accounts/login/?next=/app/';
+				throw new Error('Tu sesión terminó. Entra de nuevo.');
+			}
+			if (!response.ok) {
+				const body = await response.json().catch(() => null);
+				if (response.status === 503) throw new Error(body?.detail || 'El motor de IA no está disponible.');
+				throw new Error(body?.detail || `El servidor respondió con un error (${response.status}). Intenta de nuevo; si sigue, revisa el registro del backend.`);
+			}
+			return response.json();
+		}
+
+		/* ---------- conexión ---------- */
+		function setLive(state, text) {
+			$('live').dataset.state = state;
+			$('liveText').textContent = text;
+		}
+		function showError(message) {
+			$('bannerText').textContent = message;
+			$('banner').hidden = false;
+			setLive('off', 'Sin conexión');
+		}
+
+		/* ---------- estado general ---------- */
+		function renderState(data) {
+			const a = data.analysis, n = a.changes.length;
+			const names = [...new Set(a.changes.map((c) => LABELS[c.metric] ?? (c.metric.startsWith('dose:') ? 'Ritmo de dosis' : c.metric)))];
+			let tone = 'idle', mark = '○', title, text;
+			if (!a.window.packets) {
+				title = `No hay lecturas ${source === 'simulated' ? 'simuladas' : 'de hardware'} todavía`;
+				text = 'Cuando un dispositivo envíe datos, aparecerán aquí solos. Abajo tienes cómo generar datos de prueba.';
+			} else if (!n) {
+				tone = 'stable'; mark = '●';
+				title = 'Sin cambios frente a su línea base';
+				text = 'Los valores recientes se parecen a los del inicio de la sesión.';
+			} else {
+				tone = 'change'; mark = '▲';
+				title = n === 1 ? 'Hay 1 cambio frente a su línea base' : `Hay ${n} cambios frente a su línea base`;
+				text = `Cambiaron: ${names.join(', ')}. Es una comparación estadística con las primeras lecturas de esta sesión, no un diagnóstico.`;
+			}
+			$('state').dataset.tone = tone;
+			$('stateMark').textContent = mark;
+			$('stateTitle').textContent = title;
+			$('stateText').textContent = text;
+			const facts = $('facts');
+			facts.replaceChildren();
+			if (a.window.packets) {
+				for (const [k, v] of [['Última lectura', `${ago(a.window.last_observed_at)} (${clock(a.window.last_observed_at)})`], ['Periodo analizado', `${num(a.window.hours)} h`], ['Registros', a.window.packets]]) {
+					const f = el('span');
+					f.append(`${k}: `, el('b', {}, String(v)));
+					facts.append(f);
+				}
+			}
+			facts.hidden = !a.window.packets;
+		}
+
+		/* ---------- gráficos ---------- */
+		const cardId = (s) => `card-${s.sensor}-${s.metric}`;
+		const pillFor = (sensor, a) => {
+			const dose = sensor.metric === 'absorbed_dose_cumulative' ? a.dose.chambers.find((c) => c.sensor === sensor.sensor && c.counter_epoch === sensor.counter_epoch) : null;
+			return { pill: PILLS[a.metrics[sensor.metric]?.status ?? dose?.status ?? ''], dose };
+		};
+
+		/** Primer punto desde el que la serie sale de la zona habitual y no vuelve a entrar en los siguientes tres. */
+		function onsetIndex(values, lo, hi) {
+			for (let i = 0; i < values.length; i++) {
+				const side = values[i] > hi ? 1 : values[i] < lo ? -1 : 0;
+				if (!side) continue;
+				const tail = values.slice(i, i + 4);
+				if (tail.every((v) => (side > 0 ? v > hi : v < lo))) return i;
+			}
+			return -1;
+		}
+
+		function plot(sensor, tracked, points) {
+			const box = el('div', { className: 'plot' });
+			const values = points.map((p) => p[1]);
+			if (values.length < 2) return box.appendChild(el('p', { className: 'empty' }, 'Pocas lecturas en este periodo.')), box;
+			const t0 = new Date(points[0][0]).getTime(), t1 = new Date(points.at(-1)[0]).getTime() || t0 + 1;
+			const base = tracked?.baseline?.median ?? null, spread = tracked?.baseline?.spread ?? null;
+			const zone = base !== null && spread ? [base - ZONE * spread, base + ZONE * spread] : null;
+			const pool = [...values, ...(zone ?? []), ...(base !== null ? [base] : [])];
+			let lo = Math.min(...pool), hi = Math.max(...pool);
+			const pad = (hi - lo || 1) * 0.08;
+			lo -= pad; hi += pad;
+			const X = (t) => ((t - t0) / (t1 - t0 || 1)) * 100;
+			const Y = (v) => 100 - ((v - lo) / (hi - lo)) * 100;
+			const xs = points.map((p) => X(new Date(p[0]).getTime()));
+
+			const svg = svgEl('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+			const defs = svgEl('defs');
+			const grad = svgEl('linearGradient', { id: 'fade', x1: 0, y1: 0, x2: 0, y2: 1 });
+			grad.append(svgEl('stop', { offset: '0', 'stop-color': '#6fa8ff', 'stop-opacity': '.22' }), svgEl('stop', { offset: '1', 'stop-color': '#6fa8ff', 'stop-opacity': '0' }));
+			defs.append(grad);
+			svg.append(defs);
+			if (zone) svg.append(svgEl('rect', { class: 'band', x: 0, width: 100, y: Y(zone[1]), height: Math.max(0.5, Y(zone[0]) - Y(zone[1])) }));
+			if (base !== null) svg.append(svgEl('line', { class: 'ref', x1: 0, x2: 100, y1: Y(base), y2: Y(base) }));
+			const path = points.map((p, i) => `${xs[i]},${Y(p[1])}`);
+			svg.append(svgEl('polygon', { class: 'area', points: `${xs[0]},100 ${path.join(' ')} ${xs.at(-1)},100` }));
+			svg.append(svgEl('polyline', { class: 'line', points: path.join(' ') }));
+			let onsetAt = -1;
+			if (zone && /shift/.test(tracked.status)) {
+				onsetAt = onsetIndex(values, zone[0], zone[1]);
+				if (onsetAt > 0) svg.append(svgEl('line', { class: 'onset', x1: xs[onsetAt], x2: xs[onsetAt], y1: 0, y2: 100 }));
+			}
+			box.append(svg);
+
+			const tag = (cls, text, style = {}) => box.append(Object.assign(el('span', { className: `tag ${cls}` }, text), { style: Object.entries(style).map(([k, v]) => `${k}:${v}`).join(';') }));
+			tag('max', `máx ${num(Math.max(...values))}`);
+			tag('min', `mín ${num(Math.min(...values))}`);
+			if (zone) tag('zone', 'zona habitual', { top: `calc(${Y(zone[1])}% + .15rem)` });
+			// La etiqueta va hacia el lado donde hay más sitio, para no cruzar la serie.
+			if (onsetAt > 0) tag(`onset ${xs[onsetAt] > 45 ? 'before' : 'after'}`, `salió de la zona ${hm(points[onsetAt][0])}`, { left: `${xs[onsetAt]}%` });
+
+			const cursor = el('div', { className: 'cursor' }), dot = el('div', { className: 'dot' }), tip = el('div', { className: 'tip' });
+			box.append(cursor, dot, tip);
+			const show = (clientX) => {
+				const r = box.getBoundingClientRect();
+				const fx = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+				let best = 0;
+				for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - fx) < Math.abs(xs[best] - fx)) best = i;
+				const px = Math.max(12, Math.min(88, xs[best]));
+				cursor.style.left = `${xs[best]}%`;
+				dot.style.left = `${xs[best]}%`; dot.style.top = `${Y(values[best])}%`;
+				tip.style.left = `${px}%`;
+				tip.textContent = `${num(values[best])} ${unit(sensor.unit)} · ${clock(points[best][0])}`;
+			};
+			box.addEventListener('pointermove', (e) => show(e.clientX));
+			box.addEventListener('pointerdown', (e) => { box.classList.add('touching'); show(e.clientX); });
+			box.addEventListener('pointerleave', () => box.classList.remove('touching'));
+			box.addEventListener('pointerup', () => setTimeout(() => box.classList.remove('touching'), 1500));
+			return box;
+		}
+
+		function card(sensor, a) {
+			const isDose = sensor.metric === 'absorbed_dose_cumulative';
+			const tracked = a.metrics[sensor.metric];
+			const { pill, dose } = pillFor(sensor, a);
+			const cutoff = new Date(sensor.latest.observed_at).getTime() - range * 60000;
+			const points = sensor.points.filter((p) => new Date(p[0]).getTime() >= cutoff);
+			const values = points.map((p) => p[1]);
+			const node = el('article', { className: 'card', id: cardId(sensor) });
+			node.dataset.tone = pill?.[2] ?? '';
+			const head = el('header');
+			const title = el('div');
+			title.append(el('h3', {}, isDose ? chamber(sensor.sensor) : LABELS[sensor.metric] ?? sensor.metric));
+			if (isDose) title.append(el('span', { className: 'hint' }, 'Dosis acumulada · contador propio'));
+			head.append(title);
+			if (pill) head.append(el('span', { className: 'pill' }, `${pill[0]} ${pill[1]}`));
+			node.append(head);
+			const value = el('p', { className: 'value' }, num(sensor.latest.value));
+			value.append(el('span', {}, unit(sensor.unit)));
+			node.append(value);
+			const base = tracked?.baseline?.median ?? null;
+			if (base !== null) node.append(el('p', { className: 'base' }, `Al inicio ${num(base)} → ahora ${num(sensor.latest.value)} ${unit(sensor.unit)}`));
+			if (dose?.rate_per_hour?.recent != null) node.append(el('p', { className: 'base' }, `Ritmo reciente ${num(dose.rate_per_hour.recent)} ${sensor.unit}/h${dose.rate_ratio ? ` · ×${num(dose.rate_ratio)} frente al inicio` : ''}`));
+			node.append(plot(sensor, tracked, points));
+			if (points.length > 1) {
+				const axis = el('p', { className: 'axis' });
+				axis.append(el('span', {}, clock(points[0][0])), el('span', {}, clock(points.at(-1)[0])));
+				node.append(axis);
+				const mean = values.reduce((s, v) => s + v, 0) / values.length;
+				node.append(el('p', { className: 'stats' }, `Mín ${num(Math.min(...values))} · promedio ${num(mean)} · máx ${num(Math.max(...values))} ${unit(sensor.unit)} · ${values.length} puntos`));
+			}
+			return node;
+		}
+
+		function kpis(items, a) {
+			const nav = $('kpis');
+			nav.replaceChildren();
+			for (const s of items) {
+				if (['exposure_duration', 'internal_temperature'].includes(s.metric)) continue;
+				const { pill } = pillFor(s, a);
+				const link = el('a', { className: 'kpi', href: `#${cardId(s)}` });
+				link.dataset.tone = pill?.[2] ?? '';
+				link.append(el('small', {}, s.metric === 'absorbed_dose_cumulative' ? chamber(s.sensor).replace('Cámara de ', 'Dosis ') : SHORT[s.metric] ?? s.metric));
+				const b = el('b', {}, num(s.latest.value));
+				b.append(' ', el('span', {}, unit(s.unit)));
+				link.append(b);
+				if (pill) link.append(el('em', {}, `${pill[0]} ${pill[1].replace(' que al inicio', '').replace(' más rápido', ' rápido')}`));
+				nav.append(link);
+			}
+			nav.hidden = !nav.children.length;
+		}
+
+		function renderReadings(data) {
+			const groups = { dosimeter: [], harness: [] };
+			const all = data.sensors.filter((s) => !HIDDEN.has(s.metric) && groups[s.device_kind]);
+			const rank = (s) => Object.keys(LABELS).indexOf(s.metric);
+			all.sort((x, y) => rank(x) - rank(y) || x.sensor.localeCompare(y.sensor));
+			for (const s of all) groups[s.device_kind].push(s);
+			// Las cifras de arriba siguen el orden de la pantalla: signos vitales y después dosis.
+			kpis([...groups.harness, ...groups.dosimeter], data.analysis);
+			for (const [kind, items] of Object.entries(groups)) {
+				$('cards-' + kind).replaceChildren(...(items.length ? items.map((s) => card(s, data.analysis)) : [el('p', { className: 'empty' }, 'Este dispositivo aún no envió lecturas.')]));
+			}
+		}
+
+		/* ---------- modelos de IA ---------- */
+		function modelNames() {
+			const l = ia?.labels ?? {}, real = ia?.real_models;
+			const rules = 'Motor de reglas (sin modelo de lenguaje)';
+			$('modelHealth').textContent = real ? l.health : rules;
+			$('modelSpace').textContent = real ? l.space : rules;
+			$('modelSynth').textContent = real ? l.synthesis : rules;
+			$('engine').textContent = ia?.label ?? '';
+		}
+		const list = (items, className = 'list') => {
+			const ul = el('ul', { className });
+			ul.append(...items.map((t) => el('li', {}, t)));
+			return ul;
+		};
+		function reportBody(report) {
+			const frag = document.createDocumentFragment();
+			if (report.highlights.length) frag.append(el('p', { className: 'sub' }, 'Lo más importante'), list(report.highlights, 'list key'));
+			const d = el('details', { open: !report.highlights.length });
+			d.append(el('summary', {}, ia?.real_models ? 'Lectura del modelo y límites' : 'Informe completo y límites'), el('p', {}, report.analysis), list(report.limitations));
+			if (ia?.real_models) d.append(el('p', { className: 'waiting' }, 'Texto redactado por un modelo de lenguaje: puede contener errores. Lo importante es lo de arriba, que sale de las lecturas.'));
+			frag.append(d);
+			return frag;
+		}
+		function say(text) {
+			for (const id of ['bodyHealth', 'bodySpace', 'bodySynth']) $(id).replaceChildren(el('p', { className: 'waiting' }, text));
+		}
+		async function summarize() {
+			if (!last) return;
+			const button = $('summarize');
+			button.disabled = true;
+			button.textContent = 'Analizando…';
+			say(ia?.real_models ? 'Trabajando… con modelos reales puede tardar varios minutos.' : 'Analizando…');
+			try {
+				const r = await api(`/api/v1/sessions/${last.session.id}/summary/?source=${source}`, { method: 'POST' });
+				$('bodyHealth').replaceChildren(reportBody(r.health));
+				$('bodySpace').replaceChildren(reportBody(r.space));
+				const synth = document.createDocumentFragment();
+				synth.append(el('p', { className: 'sub' }, 'Hallazgos'), list(r.summary.findings, 'list key'));
+				if (r.summary.narrative?.length) synth.append(el('p', { className: 'sub' }, 'Lectura del modelo (puede contener errores)'), list(r.summary.narrative));
+				if (r.summary.missing_data.length) synth.append(el('p', { className: 'sub' }, 'Datos que faltan'), list(r.summary.missing_data));
+				const d = el('details');
+				d.append(el('summary', {}, `Qué no se sabe (${r.summary.uncertainties.length})`), list(r.summary.uncertainties));
+				synth.append(d, el('p', { className: 'waiting' }, r.disclaimer));
+				$('bodySynth').replaceChildren(synth);
+			} catch (error) {
+				say('No se pudo generar el análisis.');
+				$('bodySynth').append(el('p', { className: 'waiting' }, error.message));
+			} finally {
+				button.disabled = false;
+				button.textContent = 'Actualizar análisis';
+			}
+		}
+
+		/* ---------- carga ---------- */
+		async function load({ manual = false } = {}) {
+			if (busy) return;
+			busy = true;
+			try {
+				const data = await api(`/api/v1/sessions/${$('session').value}/overview/?source=${source}`);
+				$('banner').hidden = true;
+				last = data;
+				ia = data.ia;
+				setLive(paused ? 'idle' : 'on', paused ? 'En pausa' : 'En vivo');
+				const key = JSON.stringify([data.analysis.window, data.sensors.length, data.analysis.changes]);
+				const changed = key !== lastKey;
+				lastKey = key;
+				renderState(data);
+				const hasData = data.analysis.window.packets > 0;
+				$('ai').hidden = $('readings').hidden = !hasData;
+				$('demo').open = !hasData;
+				if (!hasData) { $('kpis').hidden = true; return; }
+				if (changed || manual) renderReadings(data);
+				modelNames();
+				// El motor de reglas es instantáneo y se actualiza solo; los modelos reales se piden a mano.
+				if (manual || (changed && !ia.real_models)) summarize();
+				else if (changed) say('Hay datos nuevos. Pulsa «Actualizar análisis» para pedirlo a los modelos.');
+			} catch (error) {
+				showError(error.message);
+			} finally {
+				busy = false;
+			}
+		}
+
+		function schedule() {
+			clearInterval(timer);
+			if (!paused) timer = setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
+		}
+
+		async function init() {
+			try {
+				const sessions = (await api('/api/v1/sessions/?page_size=100')).results;
+				$('banner').hidden = true;
+				if (!sessions.length) {
+					$('stateTitle').textContent = 'No tienes sesiones asignadas';
+					$('stateText').textContent = 'Pide a un administrador que te dé acceso a una sesión de monitoreo.';
+					setLive('idle', 'Sin sesión');
+					return;
+				}
+				$('session').replaceChildren(...sessions.map((s) => el('option', { value: s.id }, s.identifier)));
+				$('sessionBox').hidden = sessions.length < 2;
+				const saved = sessionStorage.getItem('kha:session');
+				if (saved && sessions.some((s) => s.id === saved)) $('session').value = saved;
+				await load();
+				schedule();
+			} catch (error) {
+				$('stateTitle').textContent = 'No se pudo abrir la app';
+				$('stateText').textContent = '';
+				showError(error.message);
+			}
+		}
+
+		$('session').addEventListener('change', () => { sessionStorage.setItem('kha:session', $('session').value); lastKey = ''; load(); });
+		document.querySelectorAll('.seg button[data-source]').forEach((b) => b.addEventListener('click', () => {
+			source = b.dataset.source;
+			document.querySelectorAll('.seg button[data-source]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+			lastKey = '';
+			load();
+		}));
+		$('range').addEventListener('click', (e) => {
+			const b = e.target.closest('button[data-range]');
+			if (!b) return;
+			range = Number(b.dataset.range);
+			$('range').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+			if (last) renderReadings(last);
+		});
+		$('summarize').addEventListener('click', () => summarize());
+		$('retry').addEventListener('click', () => (last ? load({ manual: true }) : init()));
+		$('pause').addEventListener('click', () => {
+			paused = !paused;
+			$('pause').textContent = paused ? 'Reanudar' : 'Pausar';
+			setLive(paused ? 'idle' : 'on', paused ? 'En pausa' : 'En vivo');
+			schedule();
+			if (!paused) load();
+		});
+		document.addEventListener('visibilitychange', () => { if (!document.hidden && !paused && last) load(); });
+		// El «hace X» se mantiene al día sin pedir datos.
+		setInterval(() => { if (last) renderState(last); }, 10000);
+		init();
+	</script>
+{% endverbatim %}
+</body>
+</html>

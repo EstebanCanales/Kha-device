@@ -49,6 +49,44 @@ An unauthenticated sender gets `401`:
 curl -i -H 'Content-Type: application/json' -d '{}' 'http://127.0.0.1:8000/api/v1/telemetry/batches/'
 ```
 
+## Kha-device 01 demo: devices, analysis, summary, and app
+
+**Fastest way to see it working** (local demo, three commands, one terminal each time):
+
+```bash
+uv sync --locked
+uv run python manage.py demo_kha          # migrates, creates user "demo", registers the devices, loads 1 h of simulated data
+uv run python manage.py runserver         # then open http://127.0.0.1:8000/app/
+```
+
+`demo_kha` prints the generated password once. It is safe to run again: it keeps the user and does not duplicate data (`--more` adds another window, `--minutes`, `--scenario baseline` and `--username` change what it creates). If the server shows "You have N unapplied migration(s)" you skipped this step. The longer path below does the same thing by hand and sends the data over HTTP.
+
+This path uses the two Kha-device 01 devices: the Crew Active Dosimeter (two DIS chambers, a TMP117 for internal temperature) and the vital-signs device (MAX86178 for pulse, SpO₂, and respiratory rate; MAX30205 for skin temperature). Part numbers come from the project notes. **All profiles are simulated**: sampling rates, payloads, and calibration are not verified.
+
+```bash
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+uv run python manage.py setup_kha_devices --reader YOUR_USERNAME     # prints session_uuid, epoch_high, epoch_low
+export VITALS_DEVICE_TOKEN="$(uv run python manage.py provision_device_token kha-vitals-sim-001 | tail -1)"
+export CAD_DEVICE_TOKEN="$(uv run python manage.py provision_device_token cad-sim-001 | tail -1)"
+uv run python manage.py runserver
+python3 scripts/simulate_kha.py --epoch-high EPOCH_HIGH --epoch-low EPOCH_LOW --minutes 60 --scenario stress
+```
+
+The simulator sends one hour of history over the real HTTP endpoint. `--scenario stress` shifts the last 30% of the window (heart rate, SpO₂, respiratory rate, skin temperature, and dose rate) so the analysis has something to report; `baseline` keeps it steady. Packet identities derive from `--seed`, device, and timestamp, so running it again reports duplicates instead of storing readings twice.
+
+Open `http://127.0.0.1:8000/app/` and sign in with the account you passed to `--reader`. The dashboard opens with one plain-language status ("Hay 6 cambios frente a su línea base"), then shows the three AI steps (Salud, Astronomía, Síntesis) and the latest reading per sensor with its personal baseline drawn as a dotted line. It refreshes every 15 seconds (pausable) and loads everything with one request to `/overview/`. With the default `rules` engine the AI summary updates by itself; with real models it runs when you press **Actualizar análisis**. If the backend stops answering it says so, keeps the last data, and offers a retry. Anonymous visitors are sent to the login page. The landing page (`landing/`) links here from its hero; set `PUBLIC_APP_URL` when building it if the backend is not on `127.0.0.1:8000`.
+
+**Analysis** (`monitoring/analysis.py`) is descriptive. For heart rate, SpO₂, respiratory rate, and skin temperature it compares the latest readings with the same person's early readings in the same session (median and median absolute deviation, flagged at 3 deviations). For each DIS chamber it reports the latest cumulative dose per counter epoch and the recent rate against the early rate. It also lists missing readings and pauses in the timeline. The thresholds are provisional engineering choices, not medical or radiological limits. Respiratory rate in the simulator is a synthetic derived channel (`method=ppg_modulation_simulated`); no raw PPG or ECG is processed.
+
+**Summary** (`ia/`) runs a health specialist, a space specialist, and a synthesis step over the analysis. Three engines, chosen with `IA_ENGINE`:
+
+- `rules` (default): fixed templates, **no language model**. The dashboard badge says "Motor de reglas".
+- `ollama`: the three Hugging Face models served by a local [Ollama](https://ollama.com). Prepare them once with `ia/ollama/setup.sh`, then start the backend with `IA_ENGINE=ollama`.
+- `huggingface`: the same models through transformers, after `uv sync --extra ia`.
+
+Neither language-model engine produces a diagnosis, and the counts shown first in every summary are computed from the readings, not by a model. See [ia/README.md](ia/README.md).
+
 ## API surface
 
 | Route | Access | Operation |
@@ -62,7 +100,11 @@ curl -i -H 'Content-Type: application/json' -d '{}' 'http://127.0.0.1:8000/api/v
 | `/api/v1/sessions/` | Staff CRUD; assigned users read | Sessions |
 | `/api/v1/sessions/{uuid}/measurements/` | Assigned users and staff | Paginated history |
 | `/api/v1/sessions/{uuid}/latest/` | Assigned users and staff | Latest per sensor, metric, unit, and counter epoch |
+| `/api/v1/sessions/{uuid}/overview/` | Assigned users and staff | Analysis, per-sensor series, and AI engine in one response (`source` required) |
+| `/api/v1/sessions/{uuid}/analysis/` | Assigned users and staff | Baseline changes, dose counters, gaps (`source` required) |
+| `/api/v1/sessions/{uuid}/summary/` | Assigned users and staff | `POST`: run the AI module; stores nothing (`source` required) |
 | `/api/v1/telemetry/batches/` | Device credential | Atomic batch ingest |
+| `/app/`, `/accounts/login/` | Signed-in user | Operator dashboard |
 | `/api/v1/schema/` | Public | OpenAPI schema |
 | `/healthz/`, `/readyz/` | Public | Process and database checks |
 

@@ -39,6 +39,8 @@ Los valores escalares son **cadenas decimales finitas**, hasta 18 dígitos enter
 
 Las dosis absorbidas usan Gy, mGy o uGy; las equivalentes y personales usan Sv, mSv o uSv. Las tasas usan los mismos prefijos por hora. La unidad original se guarda sin conversión. Los contadores acumulados requieren una época y no se suman entre sí. `exposure_duration` registra segundos reportados por el instrumento o protocolo, no tiempo entre peticiones. Las combinaciones admitidas están en `METRIC_UNITS`; ninguna está habilitada en un dispositivo hasta crear `SensorCapability(enabled=True)`.
 
+La temperatura interna de un instrumento (`internal_temperature`, `degC`) se mantiene separada de la temperatura cutánea. Una cámara de dosis acumulada es un sensor propio con su propia `counter_epoch`.
+
 ## Lotes, reenvíos y límites
 
 Un lote contiene 1 a 100 paquetes, cada uno con 1 a 32 lecturas. El cuerpo JSON se limita a 262144 bytes por defecto y la ingesta a 120 peticiones por minuto y credencial en la caché local de Django. Para un despliegue con varios procesos hace falta una caché compartida. El lote es atómico: cualquier paquete nuevo inválido revierte todos los insertados en esa petición.
@@ -60,5 +62,7 @@ Respuesta con inserciones (`201`) o solo duplicados (`200`):
 ## Consulta
 
 `GET /api/v1/sessions/` lista solo sesiones autorizadas para la cuenta humana; el personal administrativo puede ver todas. `GET /api/v1/sessions/{uuid}/measurements/` devuelve historial paginado (100 filas por defecto, máximo 500 por página) en orden estable de `observed_at` e ID. `GET /api/v1/sessions/{uuid}/latest/` devuelve la última lectura por sensor, métrica, unidad y época, según `observed_at`; incluye su tiempo y no declara que siga vigente.
+
+`GET /api/v1/sessions/{uuid}/analysis/?source=…` devuelve el análisis descriptivo de la sesión (línea base personal, cambios, contadores de dosis por cámara y pausas) y `POST /api/v1/sessions/{uuid}/summary/?source=…` ejecuta el módulo de IA sobre ese análisis y responde `503` si el motor no está disponible. Ninguna ruta guarda resultados.
 
 Ambas consultas de lecturas requieren `source=hardware` o `source=simulated`. Admiten `metric`, `sensor` (identificador legible), `observed_from` y `observed_to` con zona horaria. Si se aportan ambos tiempos, el intervalo máximo es de 31 días. La respuesta incluye valor, unidad, calidad, procedencia, `observed_at`, `received_at` y versión de perfil. Las lecturas aceptadas no tienen endpoints genéricos de edición ni borrado.

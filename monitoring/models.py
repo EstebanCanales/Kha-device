@@ -19,6 +19,7 @@ class Metric(models.TextChoices):
     RESPIRATORY_RATE = "respiratory_rate", "Respiratory rate"
     SPO2 = "spo2", "Peripheral oxygen saturation estimate"
     SKIN_TEMPERATURE = "skin_temperature", "Skin temperature"
+    INTERNAL_TEMPERATURE = "internal_temperature", "Device internal temperature"
     ACCELERATION_X = "acceleration_x", "Acceleration X"
     ACCELERATION_Y = "acceleration_y", "Acceleration Y"
     ACCELERATION_Z = "acceleration_z", "Acceleration Z"
@@ -38,6 +39,7 @@ METRIC_UNITS = {
     Metric.RESPIRATORY_RATE: {"breaths/min"},
     Metric.SPO2: {"%"},
     Metric.SKIN_TEMPERATURE: {"degC"},
+    Metric.INTERNAL_TEMPERATURE: {"degC"},
     Metric.ACCELERATION_X: {"m/s2"},
     Metric.ACCELERATION_Y: {"m/s2"},
     Metric.ACCELERATION_Z: {"m/s2"},

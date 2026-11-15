@@ -16,10 +16,13 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, NotAuthenticated, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ia import IAError, describe_engine, run_pipeline
+
+from .analysis import analyze_session, sensor_series
 from .authentication import DeviceAuthentication, DeviceRateThrottle
 from .models import (
     CounterEpoch,
@@ -56,6 +59,11 @@ class Conflict(APIException):
 class PayloadTooLarge(APIException):
     status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
     default_detail = "JSON body exceeds the configured size limit."
+
+
+class ServiceUnavailable(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "The summary engine is not available."
 
 
 class LimitedJSONParser(JSONParser):
@@ -143,10 +151,15 @@ class HistoryPagination(PageNumberPagination):
     max_page_size = 500
 
 
-def _history_filters(request, session):
+def _require_source(request):
     source = request.query_params.get("source")
     if source not in Device.Source.values:
         raise ValidationError({"source": "Choose hardware or simulated explicitly."})
+    return source
+
+
+def _history_filters(request, session):
+    source = _require_source(request)
     readings = Measurement.objects.select_related("packet", "sensor", "counter_epoch").filter(
         packet__assignment__session=session, packet__source=source
     )
@@ -233,6 +246,45 @@ class SessionViewSet(viewsets.ModelViewSet):
                 latest.append(reading)
         page = self.paginate_queryset(latest)
         return self.get_paginated_response(MeasurementSerializer(page, many=True).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter("source", str, required=True, enum=Device.Source.values)],
+        responses=dict,
+    )
+    @action(detail=True, methods=["get"])
+    def analysis(self, request, pk=None):
+        """Personal baseline, changes from it, dose counters, and data gaps. Descriptive, not diagnostic."""
+        return Response(analyze_session(self.get_object(), _require_source(request)))
+
+    @extend_schema(
+        parameters=[OpenApiParameter("source", str, required=True, enum=Device.Source.values)],
+        responses=dict,
+    )
+    @action(detail=True, methods=["get"])
+    def overview(self, request, pk=None):
+        """Everything the dashboard needs in one request: analysis, per-sensor series, and the AI engine in use."""
+        session = self.get_object()
+        source = _require_source(request)
+        return Response({
+            "session": {"id": str(session.pk), "identifier": session.identifier},
+            "analysis": analyze_session(session, source),
+            "sensors": sensor_series(session, source),
+            "ia": describe_engine(),
+        })
+
+    @extend_schema(
+        parameters=[OpenApiParameter("source", str, required=True, enum=Device.Source.values)],
+        request=None, responses=dict,
+    )
+    @action(detail=True, methods=["post"], permission_classes=(IsAuthenticated,))
+    def summary(self, request, pk=None):
+        """Run the specialists and the synthesis. Readers of the session may call it; it stores nothing."""
+        analysis = analyze_session(self.get_object(), _require_source(request))
+        try:
+            result = run_pipeline(analysis)
+        except IAError as error:
+            raise ServiceUnavailable(str(error)) from error
+        return Response({"analysis": analysis, **result})
 
 
 class TelemetryBatchView(APIView):

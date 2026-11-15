@@ -1,5 +1,7 @@
 ---
 // Hero: "Earthrise" (Apolo 8, AS08-14-2383) redibujada en ASCII sobre un canvas.
+// La app funcional la sirve el backend Django; su dirección se cambia con PUBLIC_APP_URL.
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'http://127.0.0.1:8000/app/';
 ---
 
 <section class="hero" aria-labelledby="hero-title">
@@ -8,6 +10,7 @@
 	<div class="hero__copy">
 		<h1 id="hero-title">Kha-device <span>01</span></h1>
 		<p class="hero__lede">Datos médicos y datos espaciales, analizados juntos.</p>
+		<a class="hero__cta" href={appUrl}>Entrar a la app <span aria-hidden="true">-&gt;</span></a>
 		<p class="hero__credit">Earthrise · Apolo 8 · 24 dic 1968 · redibujada en ASCII</p>
 	</div>
 </section>
@@ -42,7 +45,7 @@
 		position: absolute;
 		z-index: 1;
 		left: var(--gutter);
-		top: 22svh;
+		top: 18svh;
 		max-width: min(38rem, 46vw);
 	}
 
@@ -69,6 +72,43 @@
 		text-wrap: balance;
 	}
 
+	.hero__cta {
+		display: inline-block;
+		margin-top: 2rem;
+		padding: 0.85rem 1.4rem;
+		border: 1px solid var(--soft);
+		background: rgba(7, 11, 23, 0.55);
+		color: var(--regolith);
+		font-family: var(--display);
+		font-size: 0.78rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		text-decoration: none;
+		transition:
+			background 0.2s,
+			border-color 0.2s;
+	}
+
+	.hero__cta span {
+		display: inline-block;
+		margin-left: 0.5rem;
+		transition: transform 0.2s;
+	}
+
+	.hero__cta:hover {
+		border-color: var(--regolith);
+		background: rgba(217, 213, 208, 0.12);
+	}
+
+	.hero__cta:hover span {
+		transform: translateX(0.3rem);
+	}
+
+	.hero__cta:focus-visible {
+		outline: 1px solid var(--ocean);
+		outline-offset: 4px;
+	}
+
 	.hero__credit {
 		margin: 2.5rem 0 0;
 		font-size: 0.72rem;
@@ -90,6 +130,10 @@
 
 		.hero__lede {
 			margin-top: 1rem;
+		}
+
+		.hero__cta {
+			margin-top: 1.25rem;
 		}
 
 		.hero__credit {
